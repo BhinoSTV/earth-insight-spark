@@ -3,6 +3,8 @@ import { Satellite, Globe, TrendingUp } from "lucide-react";
 
 const NewsTicker = () => {
   const [isPaused, setIsPaused] = useState(false);
+  
+  console.log("NewsTicker component rendered", { isPaused });
 
   const newsItems = [
     {
@@ -28,7 +30,8 @@ const NewsTicker = () => {
   ];
 
   return (
-    <div className="bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border-y border-border/30 overflow-hidden">
+    <div className="w-full min-h-[50px] bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 border-y border-border/30 overflow-hidden relative"
+         style={{ zIndex: 10 }}>
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-primary-glow font-semibold text-sm whitespace-nowrap">
