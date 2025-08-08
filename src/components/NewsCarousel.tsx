@@ -16,6 +16,14 @@ const NewsCarousel = () => {
 
   const newsItems = [
     {
+      icon: <Globe className="w-5 h-5" />,
+      title: "Our Lead Researcher Joining International Dual Doctorate Degree.",
+      description: "Our lead researcher joins the AIT–IIT Roorkee Dual Doctoral Degree Program, advancing global collaboration and innovation.",
+      category: "Research",
+      time: "Today",
+      href: "https://ait.ac.th/2022/08/ait-and-iit-roorkee-celebrate-one-year-of-dual-doctoral-degree-program/"
+    },
+    {
       icon: <Satellite className="w-5 h-5" />,
       title: "Sentinel-2 Environmental Data",
       description: "New high-resolution satellite data now available for comprehensive environmental monitoring and analysis.",
@@ -127,7 +135,19 @@ const NewsCarousel = () => {
                         </span>
                       </div>
                       <h4 className="font-semibold text-foreground text-sm mb-2 group-hover:text-primary-glow transition-colors">
-                        {item.title}
+                        {item.href ? (
+                          <a
+                            href={item.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="story-link"
+                            aria-label={item.title}
+                          >
+                            {item.title}
+                          </a>
+                        ) : (
+                          item.title
+                        )}
                       </h4>
                       <p className="text-muted-foreground text-xs leading-relaxed">
                         {item.description}
