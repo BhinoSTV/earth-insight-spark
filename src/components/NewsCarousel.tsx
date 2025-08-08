@@ -24,6 +24,13 @@ const NewsCarousel = () => {
       href: "https://ait.ac.th/2022/08/ait-and-iit-roorkee-celebrate-one-year-of-dual-doctoral-degree-program/"
     },
     {
+      icon: <Globe className="w-5 h-5" />,
+      title: "New Insights into Sustainable Irrigation: Mapping River Flow & Groundwater Recharge in the Padsan Watershed",
+      description: "A groundbreaking study uses SWAT modeling and bias-corrected CHIRPS data to reveal that irrigated agricultural zones in the Padsan watershed suffer from critically low groundwater recharge—posing risks to food security and urging integrated water‑resource planning.",
+      category: "Publication",
+      href: "https://rdcu.be/d7qYI"
+    },
+    {
       icon: <Satellite className="w-5 h-5" />,
       title: "Sentinel-2 Environmental Data",
       description: "New high-resolution satellite data now available for comprehensive environmental monitoring and analysis.",
