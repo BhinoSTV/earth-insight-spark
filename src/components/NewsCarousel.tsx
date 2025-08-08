@@ -20,7 +20,7 @@ const NewsCarousel = () => {
       title: "Our Lead Researcher Joining International Dual Doctorate Degree.",
       description: "Our lead researcher joins the AIT–IIT Roorkee Dual Doctoral Degree Program, advancing global collaboration and innovation.",
       category: "Research",
-      time: "Today",
+      time: "August 3, 2022",
       href: "https://ait.ac.th/2022/08/ait-and-iit-roorkee-celebrate-one-year-of-dual-doctoral-degree-program/"
     },
     {
