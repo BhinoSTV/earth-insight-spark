@@ -125,9 +125,9 @@ const NewsCarousel = () => {
             {newsItems.map((item, index) => (
               <div
                 key={index}
-                className="embla__slide flex-shrink-0 w-full md:w-1/2 lg:w-1/3 px-2"
+                className="embla__slide flex-shrink-0 w-full px-2"
               >
-                <div className="bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-4 h-full hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group">
+                <div className="bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-6 md:p-8 h-full md:min-h-[260px] hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="p-2 rounded-lg bg-primary/20 text-primary-glow group-hover:bg-primary/30 transition-colors">
                       {item.icon}
@@ -141,7 +141,7 @@ const NewsCarousel = () => {
                           {item.time}
                         </span>
                       </div>
-                      <h4 className="font-semibold text-foreground text-sm mb-2 group-hover:text-primary-glow transition-colors">
+                      <h4 className="font-semibold text-foreground text-base md:text-lg mb-2 group-hover:text-primary-glow transition-colors">
                         {item.href ? (
                           <a
                             href={item.href}
@@ -156,7 +156,7 @@ const NewsCarousel = () => {
                           item.title
                         )}
                       </h4>
-                      <p className="text-muted-foreground text-xs leading-relaxed">
+                      <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
                         {item.description}
                       </p>
                     </div>

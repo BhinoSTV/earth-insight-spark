@@ -83,7 +83,7 @@ const HeroSection = () => {
       {/* Main content */}
       <div className="relative z-10 container mx-auto px-4 md:px-6 text-center pt-16 md:pt-0">
         <div className="animate-fade-in">
-          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 bg-gradient-to-r from-foreground via-primary-glow to-accent bg-clip-text text-transparent leading-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-5 bg-gradient-to-r from-foreground via-primary-glow to-accent bg-clip-text text-transparent leading-tight">
             Welcome to GeoSpaDa Sci-Hub
           </h1>
           <p className="text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 text-muted-foreground max-w-3xl mx-auto px-4">
