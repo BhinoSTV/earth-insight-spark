@@ -25,7 +25,7 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen bg-gradient-hero flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[70vh] bg-gradient-hero flex items-center justify-center overflow-hidden">
       {/* Dynamic animated grid background */}
       <div className="absolute inset-0 opacity-30">
         <div 
@@ -81,7 +81,7 @@ const HeroSection = () => {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 container mx-auto px-4 md:px-6 text-center pt-16 md:pt-0">
+      <div className="relative z-10 container mx-auto px-4 md:px-6 text-center pt-8 md:pt-0">
         <div className="animate-fade-in">
           <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-5 bg-gradient-to-r from-foreground via-primary-glow to-accent bg-clip-text text-transparent leading-tight">
             Welcome to GeoSpaDa Sci-Hub

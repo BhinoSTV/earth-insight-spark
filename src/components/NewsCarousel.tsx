@@ -90,7 +90,7 @@ const NewsCarousel = () => {
   }, [emblaApi, onSelect]);
 
   return (
-    <div className="w-full bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border-y border-border/30 py-4">
+    <div className="w-full bg-gradient-to-r from-primary/10 via-secondary/10 to-accent/10 border-y border-border/30 py-8">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ const NewsCarousel = () => {
                 key={index}
                 className="embla__slide flex-shrink-0 w-full px-2"
               >
-                <div className="bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-6 md:p-8 h-full md:min-h-[260px] hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group">
+                <div className="bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-6 md:p-10 h-full md:min-h-[420px] hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="p-2 rounded-lg bg-primary/20 text-primary-glow group-hover:bg-primary/30 transition-colors">
                       {item.icon}
