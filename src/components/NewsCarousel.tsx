@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { ChevronLeft, ChevronRight, Satellite, Globe, TrendingUp, MapPin, Camera } from "lucide-react";
+import { ChevronLeft, ChevronRight, Satellite, Globe, TrendingUp, MapPin, Camera, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NewsCarousel = () => {
@@ -16,12 +16,22 @@ const NewsCarousel = () => {
 
   const newsItems = [
     {
+      icon: <Award className="w-5 h-5" />,
+      title: "Our Lead Research is an International Awardee.",
+      description:
+        "Best Paper Award at the 4th International Conference on Governance and Development (ICGD4), Kasetsart University, Jul 31–Aug 2, 2025.",
+      category: "Award",
+      time: "Jul 31–Aug 2, 2025",
+      backgroundUrl: "/lovable-uploads/8b0fe6ea-d5f1-4bb9-b4bd-17f1836ab8ec.png",
+    },
+    {
       icon: <Globe className="w-5 h-5" />,
       title: "Our Lead Researcher Joining International Dual Doctorate Degree.",
-      description: "Our lead researcher joins the AIT–IIT Roorkee Dual Doctoral Degree Program, advancing global collaboration and innovation.",
+      description:
+        "Our lead researcher joins the AIT–IIT Roorkee Dual Doctoral Degree Program, advancing global collaboration and innovation.",
       category: "Research",
       time: "August 3, 2022",
-      href: "https://ait.ac.th/2022/08/ait-and-iit-roorkee-celebrate-one-year-of-dual-doctoral-degree-program/"
+      href: "https://ait.ac.th/2022/08/ait-and-iit-roorkee-celebrate-one-year-of-dual-doctoral-degree-program/",
     },
     {
       icon: <Globe className="w-5 h-5" />,
@@ -127,38 +137,46 @@ const NewsCarousel = () => {
                 key={index}
                 className="embla__slide flex-shrink-0 w-full px-2"
               >
-                <div className="bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-6 md:p-10 h-full md:min-h-[360px] hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-primary/20 text-primary-glow group-hover:bg-primary/30 transition-colors">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-accent font-medium bg-accent/20 px-2 py-1 rounded">
-                          {item.category}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {item.time}
-                        </span>
+                <div
+                  className="relative bg-card/50 backdrop-blur-sm border border-border/30 rounded-lg p-6 md:p-10 h-full md:min-h-[500px] hover:bg-card/70 transition-all duration-300 hover:shadow-glow cursor-pointer group bg-cover bg-center"
+                  style={item.backgroundUrl ? { backgroundImage: `url(${item.backgroundUrl})`, backgroundSize: 'cover', backgroundPosition: 'center 28%' } : undefined}
+                >
+                  {item.backgroundUrl && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/60 to-background/30" />
+                  )}
+                  <div className="relative z-10">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-primary/20 text-primary-glow group-hover:bg-primary/30 transition-colors">
+                        {item.icon}
                       </div>
-                      <h4 className="font-semibold text-foreground text-base md:text-lg mb-2 group-hover:text-primary-glow transition-colors">
-                        {item.href ? (
-                          <a
-                            href={item.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="story-link"
-                            aria-label={item.title}
-                          >
-                            {item.title}
-                          </a>
-                        ) : (
-                          item.title
-                        )}
-                      </h4>
-                      <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
-                        {item.description}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-accent font-medium bg-accent/20 px-2 py-1 rounded">
+                            {item.category}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.time}
+                          </span>
+                        </div>
+                        <h4 className="font-semibold text-foreground text-base md:text-lg mb-2 group-hover:text-primary-glow transition-colors">
+                          {item.href ? (
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="story-link"
+                              aria-label={item.title}
+                            >
+                              {item.title}
+                            </a>
+                          ) : (
+                            item.title
+                          )}
+                        </h4>
+                        <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
