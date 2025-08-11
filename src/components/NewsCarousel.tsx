@@ -17,12 +17,12 @@ const NewsCarousel = () => {
   const newsItems = [
     {
       icon: <Award className="w-5 h-5" />,
-      title: "Our Lead Research is an International Awardee.",
+      title: "Our Lead Researcher is an International Awardee.",
       description:
         "Best Paper Award at the 4th International Conference on Governance and Development (ICGD4), Kasetsart University, Jul 31–Aug 2, 2025.",
       category: "Award",
       time: "Jul 31–Aug 2, 2025",
-      backgroundUrl: "/lovable-uploads/8b0fe6ea-d5f1-4bb9-b4bd-17f1836ab8ec.png",
+      backgroundUrl: "/lovable-uploads/34ee9a44-cb2e-478c-9a72-43a8ed89b359.png",
     },
     {
       icon: <Globe className="w-5 h-5" />,
