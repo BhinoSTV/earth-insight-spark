@@ -1,9 +1,36 @@
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/providers/auth";
+import { useAuthDialog } from "@/providers/auth-dialog";
 import { Satellite, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
+  const { openLogin, openRegister } = useAuthDialog();
+
+  const handleLogin = () => {
+    openLogin();
+    setIsMenuOpen(false);
+  };
+
+  const handleRegister = () => {
+    openRegister();
+    setIsMenuOpen(false);
+  };
+
+  const handleDashboard = () => {
+    navigate("/dashboard");
+    setIsMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setIsMenuOpen(false);
+    navigate("/");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/30">
@@ -16,7 +43,7 @@ const Header = () => {
             </div>
             <span className="text-lg md:text-xl font-bold text-foreground">GeoSpaDa Sci-Hub</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             <a href="#services" className="relative text-muted-foreground hover:text-primary-glow transition-all duration-300 group">
@@ -32,20 +59,33 @@ const Header = () => {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-glow transition-all duration-300 group-hover:w-full" />
             </a>
           </nav>
-          
+
           {/* Desktop Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" className="hover:text-primary-glow hover:bg-primary/10">
-              Login
-            </Button>
-            <Button variant="satellite" className="shadow-glow">
-              Register
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="ghost" className="hover:text-primary-glow hover:bg-primary/10" onClick={handleDashboard}>
+                  Dashboard
+                </Button>
+                <Button variant="satellite" className="shadow-glow" onClick={handleLogout}>
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" className="hover:text-primary-glow hover:bg-primary/10" onClick={handleLogin}>
+                  Login
+                </Button>
+                <Button variant="satellite" className="shadow-glow" onClick={handleRegister}>
+                  Register
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -68,12 +108,25 @@ const Header = () => {
                 Team
               </a>
               <div className="flex flex-col gap-3 pt-4 border-t border-border/30">
-                <Button variant="ghost" className="justify-start">
-                  Login
-                </Button>
-                <Button variant="satellite">
-                  Register
-                </Button>
+                {isAuthenticated ? (
+                  <>
+                    <Button variant="ghost" className="justify-start" onClick={handleDashboard}>
+                      Dashboard
+                    </Button>
+                    <Button variant="satellite" onClick={handleLogout}>
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" className="justify-start" onClick={handleLogin}>
+                      Login
+                    </Button>
+                    <Button variant="satellite" onClick={handleRegister}>
+                      Register
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </div>

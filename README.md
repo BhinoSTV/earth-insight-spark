@@ -60,6 +60,87 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Backend API (Django)
+
+The repository now includes a Django REST API in the `backend/` directory. It exposes authentication endpoints (`/api/auth/`) and dynamic content endpoints (`/api/news/`, `/api/services/`, `/api/team/`) that can be consumed by the React frontend.
+
+### Prerequisites
+
+- Python 3.11+
+- (Optional) SQLite (bundled with Python)
+
+### Environment variables
+
+Create a `.env` file in `backend/` (or export variables in your shell) with values tailored to your deployment:
+
+| Variable | Purpose |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | Overrides the default development secret key. |
+| `DJANGO_DEBUG` | Set to `False` in production. |
+| `DATABASE_URL` | Use with `dj-database-url` or configure `DATABASES` manually for PostgreSQL/MySQL. |
+| `ALLOWED_HOSTS` | Comma-separated hostnames allowed to access the app. |
+| `CORS_ALLOWED_ORIGINS` | Override default origins (defaults include the Vite dev server). |
+
+Update `core/settings.py` or use environment variables in production as needed.
+
+### Setup
+
+```bash
+cd backend
+
+# 1. Create & activate the virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Apply database migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# 4. (Optional) Create a superuser for admin access
+python manage.py createsuperuser
+
+# 5. Run the development server
+python manage.py runserver
+```
+
+The API will be available at `http://127.0.0.1:8000/` and supports JWT authentication using `rest_framework_simplejwt`.
+
+### Seeding initial content
+
+You can seed sample news, services, and team members using the Django shell:
+
+```bash
+python manage.py shell <<'PY'
+from content.models import NewsItem, Service, TeamMember
+from django.utils import timezone
+
+NewsItem.objects.get_or_create(
+    title="Launch Announcement",
+    defaults=dict(
+        description="We have launched the Earth Insight backend!",
+        category="Announcements",
+        hero_image_url="https://example.com/launch.jpg",
+        published_at=timezone.now(),
+    ),
+)
+
+Service.objects.get_or_create(
+    name="Geospatial Analysis",
+    defaults=dict(description="Advanced analytics for environmental data.", order=1),
+)
+
+TeamMember.objects.get_or_create(
+    full_name="Jordan Rivers",
+    defaults=dict(role="Lead Scientist", order=1),
+)
+PY
+```
+
+Alternatively, manage content through the Django admin at `/admin/` once you create a superuser.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/a40c2c79-6045-4997-89a2-4d6d90054935) and click on Share -> Publish.
