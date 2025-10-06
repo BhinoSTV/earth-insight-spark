@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tabs";
 import { useAuth } from "@/providers/auth";
 import AhpCalculator from "@/components/dashboard/AhpCalculator";
+import GeoHissViewer from "@/components/dashboard/GeoHissViewer";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -81,19 +82,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="geo-hiss" className="focus-visible:outline-none">
-            <Card>
-              <CardHeader>
-                <CardTitle>Geo-HISS</CardTitle>
-                <CardDescription>
-                  Manage hazard intelligence feeds, geospatial overlays, and response plans.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  Plug in map views, data layers, or automation controls tailored to your needs.
-                </div>
-              </CardContent>
-            </Card>
+            <GeoHissViewer />
           </TabsContent>
         </Tabs>
       </main>
