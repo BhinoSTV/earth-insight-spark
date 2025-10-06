@@ -154,6 +154,17 @@ The Geo-HISS dashboard tab consumes dynamic layer metadata from the Django admin
 
 Layer metadata is readable without authentication, while create/update actions remain gated behind the admin to prevent unauthorized uploads.
 
+### Choosing between one app or multiple Django apps
+
+It is technically possible to collapse everything into a single Django app (for example, placing authentication and content models inside one `spada` app). Django does not require multiple apps, and very small projects sometimes do this for convenience. However, keeping separate apps such as `accounts` and `content` generally scales better:
+
+- **Separation of concerns.** Authentication code changes at a different cadence than content management. Splitting apps keeps migrations, serializers, and tests focused, which reduces coupling and makes refactors easier.
+- **Pluggability.** A standalone `accounts` app can be reused in other projects or extracted to a package, while a `content` app can evolve with its own admin and API surface.
+- **Team workflows.** Different contributors can own different apps without stepping on each other’s migrations or fixtures. Issue tracking and code review stay tighter when domains are isolated.
+- **Testing and dependencies.** App-level tests run faster and remain more descriptive when they target a single domain. If one app eventually requires optional dependencies, they can be added without affecting the rest of the project.
+
+For prototypes or minimal deployments you can start with one app and split later, but doing the separation up front avoids a large refactor once the codebase grows. Keeping the lightweight `accounts` and `content` apps distinct is the recommended approach for this project.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/a40c2c79-6045-4997-89a2-4d6d90054935) and click on Share -> Publish.
