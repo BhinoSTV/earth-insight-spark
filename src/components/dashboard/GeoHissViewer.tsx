@@ -38,10 +38,14 @@ type LayerRecord = {
   id?: number;
   name: string;
   layer_type?: string | null;
+  description?: string | null;
+  source_archive?: string | null;
   geojson_file?: string | null;
   geojson_url?: string | null;
   raster_file?: string | null;
   raster_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 type ExternalLibraries = {
@@ -477,6 +481,10 @@ const GeoHissViewer = () => {
     [layers, removeCurrentLayer]
   );
 
+  const activeLayer = selectedLayer
+    ? layers.find((layer) => layer.name === selectedLayer)
+    : null;
+
   return (
     <div className="space-y-4">
       {error ? (
@@ -547,6 +555,43 @@ const GeoHissViewer = () => {
               <p className="text-sm text-muted-foreground">
                 No layers are available yet. Add data in the admin to get started.
               </p>
+            ) : null}
+
+            {activeLayer ? (
+              <div className="space-y-3 rounded-md border border-border/60 bg-muted/40 p-3 text-sm text-muted-foreground">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-foreground">{activeLayer.name}</span>
+                  {activeLayer.layer_type ? (
+                    <span className="uppercase tracking-wide text-xs text-muted-foreground/80">
+                      {activeLayer.layer_type.toUpperCase()}
+                    </span>
+                  ) : null}
+                </div>
+                {activeLayer.description ? <p>{activeLayer.description}</p> : null}
+                <div className="flex flex-wrap gap-2">
+                  {activeLayer.geojson_file ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={activeLayer.geojson_file} target="_blank" rel="noreferrer">
+                        Download GeoJSON
+                      </a>
+                    </Button>
+                  ) : null}
+                  {activeLayer.raster_file ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={activeLayer.raster_file} target="_blank" rel="noreferrer">
+                        Download Raster
+                      </a>
+                    </Button>
+                  ) : null}
+                  {activeLayer.source_archive ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={activeLayer.source_archive} target="_blank" rel="noreferrer">
+                        Source Archive
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
           </div>
         </div>

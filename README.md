@@ -141,6 +141,19 @@ PY
 
 Alternatively, manage content through the Django admin at `/admin/` once you create a superuser.
 
+### Geo-HISS layer uploads
+
+The Geo-HISS dashboard tab consumes dynamic layer metadata from the Django admin:
+
+1. Sign in to the admin (`/admin/`) and open **Spada App → Layer uploads**.
+2. Add a new layer with a unique name, select whether it is a vector or raster dataset, and upload the relevant files:
+   - Optional source archive (for example, the original zipped shapefile).
+   - Converted GeoJSON output for vector data.
+   - Raster output (for example, GeoTIFF) for raster layers.
+3. Save the record. The frontend will automatically load entries from `/api/layers/` and expose download links for the uploaded assets alongside the interactive map.
+
+Layer metadata is readable without authentication, while create/update actions remain gated behind the admin to prevent unauthorized uploads.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/a40c2c79-6045-4997-89a2-4d6d90054935) and click on Share -> Publish.
