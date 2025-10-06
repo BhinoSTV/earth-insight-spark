@@ -7,7 +7,6 @@ import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import "./index.css";
-import { AuthProvider } from "./providers/auth";
 
 const queryClient = new QueryClient();
 
@@ -17,9 +16,7 @@ createRoot(document.getElementById("root")!).render(
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <App />
       </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>
