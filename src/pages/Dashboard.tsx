@@ -13,6 +13,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useAuth } from "@/providers/auth";
+import AhpCalculator from "@/components/dashboard/AhpCalculator";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -76,19 +77,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="ahp" className="focus-visible:outline-none">
-            <Card>
-              <CardHeader>
-                <CardTitle>AHP Calculator</CardTitle>
-                <CardDescription>
-                  Launch the Analytic Hierarchy Process workflows and saved models.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  Embed comparison matrices, scoring tools, or scenario planning widgets here.
-                </div>
-              </CardContent>
-            </Card>
+            <AhpCalculator />
           </TabsContent>
 
           <TabsContent value="geo-hiss" className="focus-visible:outline-none">
