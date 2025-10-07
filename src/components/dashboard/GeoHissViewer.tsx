@@ -2,6 +2,13 @@ import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "reac
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Loader2, Menu, X } from "lucide-react";
 
@@ -316,9 +323,8 @@ const GeoHissViewer = () => {
     }
   }, [layers, removeCurrentLayer, selectedLayer]);
 
-  const handleLayerChange = useCallback(
-    async (event: ChangeEvent<HTMLSelectElement>) => {
-      const layerName = event.target.value;
+  const changeLayer = useCallback(
+    async (layerName: string) => {
       setSelectedLayer(layerName);
 
       if (!layerName) {
@@ -481,6 +487,13 @@ const GeoHissViewer = () => {
     [layers, removeCurrentLayer]
   );
 
+  const handleLayerChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      void changeLayer(event.target.value);
+    },
+    [changeLayer]
+  );
+
   const activeLayer = selectedLayer
     ? layers.find((layer) => layer.name === selectedLayer)
     : null;
@@ -505,6 +518,31 @@ const GeoHissViewer = () => {
           {isPanelOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           <span className="sr-only">Toggle layer panel</span>
         </Button>
+
+        <div className="pointer-events-none absolute left-4 top-4 z-30 hidden w-64 flex-col gap-2 md:flex">
+          <Label className="pointer-events-auto text-xs uppercase tracking-wide text-muted-foreground">
+            Active layer
+          </Label>
+          <Select
+            value={selectedLayer}
+            onValueChange={(value) => {
+              void changeLayer(value);
+            }}
+            disabled={!layers.length || !mapReady}
+          >
+            <SelectTrigger className="pointer-events-auto h-10 w-full bg-background/95 text-left text-sm shadow">
+              <SelectValue placeholder="Select a layer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">None</SelectItem>
+              {layers.map((layer) => (
+                <SelectItem key={layer.name} value={layer.name}>
+                  {layer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div
           ref={panelRef}
