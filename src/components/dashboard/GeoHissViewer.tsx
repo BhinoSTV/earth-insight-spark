@@ -71,8 +71,8 @@ type LayerRecord = {
 type ExternalLibraries = {
   L: LeafletModule;
   Chart?: ChartConstructor;
-  parseGeoraster: ParseGeoraster;
-  GeoRasterLayer: GeoRasterLayerConstructor;
+  parseGeoraster?: ParseGeoraster;
+  GeoRasterLayer?: GeoRasterLayerConstructor;
 };
 
 const CLEAR_LAYER_VALUE = "__clear_layer__";
@@ -106,6 +106,26 @@ const loadScript = (src: string) =>
     document.body.appendChild(script);
   });
 
+const loadScriptWithFallbacks = async (sources: readonly string[]) => {
+  let lastError: Error | null = null;
+
+  for (const source of sources) {
+    try {
+      await loadScript(source);
+      return;
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error(`Failed to load script: ${source}`);
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+};
+
 const loadStylesheet = (href: string) => {
   if (document.querySelector(`link[href="${href}"]`)) {
     return;
@@ -131,6 +151,7 @@ const GeoHissViewer = () => {
   const [selectedLayer, setSelectedLayer] = useState<string>("");
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rasterWarning, setRasterWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -140,13 +161,6 @@ const GeoHissViewer = () => {
         setIsLoading(true);
         loadStylesheet("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
         await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-        await Promise.all([
-          loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"),
-          loadScript("https://unpkg.com/georaster/dist/georaster.browser.min.js"),
-        ]);
-        await loadScript(
-          "https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"
-        );
 
         if (isCancelled) {
           return;
@@ -159,9 +173,9 @@ const GeoHissViewer = () => {
           GeoRasterLayer?: GeoRasterLayerConstructor;
         };
 
-        const { L, Chart, parseGeoraster, GeoRasterLayer } = leafletWindow;
+        const { L } = leafletWindow;
 
-        if (!L || !parseGeoraster || !GeoRasterLayer || !mapContainerRef.current) {
+        if (!L || !mapContainerRef.current) {
           throw new Error("Leaflet failed to initialize. Please try again.");
         }
 
@@ -171,10 +185,54 @@ const GeoHissViewer = () => {
         });
         baseLayer.addTo(map);
 
-        libsRef.current = { L, Chart, parseGeoraster, GeoRasterLayer };
+        const chartPromise = loadScript(
+          "https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"
+        )
+          .then(() => leafletWindow.Chart)
+          .catch(() => undefined);
+
+        let rasterError: Error | null = null;
+
+        try {
+          await loadScriptWithFallbacks([
+            "https://cdn.jsdelivr.net/npm/georaster@1.6.2/dist/browser/georaster.browser.min.js",
+            "https://cdn.jsdelivr.net/npm/georaster@1.6.2/dist/georaster.browser.min.js",
+            "https://unpkg.com/georaster@1.6.2/dist/browser/georaster.browser.min.js",
+            "https://unpkg.com/georaster@1.6.2/dist/georaster.browser.min.js",
+          ]);
+          await loadScriptWithFallbacks([
+            "https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet@1.7.0/dist/georaster-layer-for-leaflet.min.js",
+            "https://unpkg.com/georaster-layer-for-leaflet@1.7.0/dist/georaster-layer-for-leaflet.min.js",
+          ]);
+        } catch (rasterLoadError) {
+          rasterError =
+            rasterLoadError instanceof Error
+              ? rasterLoadError
+              : new Error("GeoRaster libraries failed to load.");
+        }
+
+        const libs: ExternalLibraries = {
+          L,
+          Chart: await chartPromise,
+          parseGeoraster: leafletWindow.parseGeoraster,
+          GeoRasterLayer: leafletWindow.GeoRasterLayer,
+        };
+
+        if ((!libs.parseGeoraster || !libs.GeoRasterLayer) && rasterError === null) {
+          rasterError = new Error(
+            "GeoRaster libraries are unavailable. Raster datasets cannot be displayed."
+          );
+        }
+
+        libsRef.current = libs;
         mapInstanceRef.current = map;
         setMapReady(true);
         setError(null);
+        setRasterWarning(
+          rasterError
+            ? `${rasterError.message} Raster datasets will be unavailable until the viewer can load these libraries.`
+            : null
+        );
       } catch (loadError) {
         if (isCancelled) {
           return;
@@ -184,6 +242,7 @@ const GeoHissViewer = () => {
             ? loadError.message
             : "Unable to initialize the Geo-HISS viewer.";
         setError(message);
+        setRasterWarning(null);
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
@@ -258,13 +317,24 @@ const GeoHissViewer = () => {
           return;
         }
 
-        const normalizedLayers = data.filter(
-          (entry): entry is LayerRecord =>
-            typeof entry === "object" &&
-            entry !== null &&
-            "name" in entry &&
-            typeof (entry as { name?: unknown }).name === "string"
-        );
+        const normalizedLayers = data.reduce<LayerRecord[]>((acc, entry) => {
+          if (typeof entry !== "object" || entry === null) {
+            return acc;
+          }
+
+          const rawName = (entry as { name?: unknown }).name;
+          if (typeof rawName !== "string") {
+            return acc;
+          }
+
+          const trimmedName = rawName.trim();
+          if (!trimmedName) {
+            return acc;
+          }
+
+          acc.push({ ...(entry as LayerRecord), name: trimmedName });
+          return acc;
+        }, []);
 
         setLayers(normalizedLayers);
         setError(null);
@@ -494,6 +564,12 @@ const GeoHissViewer = () => {
             console.warn("Unable to compute bounds for the selected layer.", boundsError);
           }
         } else if (derivedType === "raster" && (layerDefinition.raster_file || layerDefinition.raster_url)) {
+          if (!libs.parseGeoraster || !libs.GeoRasterLayer) {
+            throw new Error(
+              "Raster layers cannot be displayed because the GeoRaster libraries are unavailable."
+            );
+          }
+
           const rasterUrl = layerDefinition.raster_file || layerDefinition.raster_url || "";
           const response = await fetch(rasterUrl);
           if (!response.ok) {
@@ -551,6 +627,13 @@ const GeoHissViewer = () => {
         <Alert variant="destructive">
           <AlertTitle>Unable to load Geo-HISS data</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {rasterWarning ? (
+        <Alert className="border-amber-500 bg-amber-500/15 text-amber-900 dark:border-amber-400 dark:bg-amber-500/10 dark:text-amber-100">
+          <AlertTitle>Raster overlays unavailable</AlertTitle>
+          <AlertDescription>{rasterWarning}</AlertDescription>
         </Alert>
       ) : null}
 
