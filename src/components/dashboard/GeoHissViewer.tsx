@@ -10,16 +10,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { Feature, GeoJsonObject } from "@/types/geojson";
+import type { Feature, GeoJsonObject } from "../../types/geojson";
 import type { Chart as ChartJS, ChartConfiguration } from "chart.js";
 import type {
   ChartConstructor,
   GeoRasterLayerConstructor,
   GeoRasterLayerInstance,
+  LeafletLayer,
+  LeafletMap,
   LeafletModule,
+  LeafletPopupLayer,
   ParseGeoraster,
 } from "@/types/geospatial";
-import type { Layer as LeafletLayer, Map as LeafletMap } from "leaflet";
 import { Loader2, Menu, X } from "lucide-react";
 
 const LAYER_CONFIG: Record<
@@ -70,11 +72,6 @@ type ExternalLibraries = {
   Chart?: ChartConstructor;
   parseGeoraster: ParseGeoraster;
   GeoRasterLayer: GeoRasterLayerConstructor;
-};
-
-type PopupLayer = LeafletLayer & {
-  bindPopup: (content: string) => PopupLayer;
-  on: (type: string, handler: () => void) => PopupLayer;
 };
 
 const CLEAR_LAYER_VALUE = "__clear_layer__";
@@ -416,7 +413,7 @@ const GeoHissViewer = () => {
 
                 const chartId = `chart-${Math.random().toString(36).slice(2)}`;
                 let chartInstance: ChartJS | null = null;
-                const popupLayer = featureLayer as PopupLayer;
+                const popupLayer = featureLayer as LeafletPopupLayer;
 
                 popupLayer.bindPopup(
                   `<div style="width:320px;height:260px;"><canvas id="${chartId}"></canvas></div>`
@@ -477,7 +474,7 @@ const GeoHissViewer = () => {
                   .join("") ||
                   '<tr><td colspan="2" style="padding:4px 0;">No attributes available.</td></tr>';
 
-                (featureLayer as PopupLayer).bindPopup(
+                (featureLayer as LeafletPopupLayer).bindPopup(
                   `<div style="max-width:360px;max-height:260px;overflow:auto"><h4 style="font-weight:600;margin-bottom:8px;">${
                     layerName
                   }</h4><table style="width:100%;font-size:12px;">${rows}</table></div>`
