@@ -147,9 +147,8 @@ The Geo-HISS dashboard tab consumes dynamic layer metadata from the Django admin
 
 1. Sign in to the admin (`/admin/`) and open **Spada App → Layer uploads**.
 2. Add a new layer with a unique name, select whether it is a vector or raster dataset, and upload the relevant files:
-   - Optional source archive (for example, the original zipped shapefile).
-   - Converted GeoJSON output for vector data.
-   - Raster output (for example, GeoTIFF) for raster layers.
+   - **Source archive.** Upload a zipped shapefile for vector layers or a zipped GeoTIFF for rasters; the backend will automatically unpack the archive and populate the derived GeoJSON or raster download.
+   - **Optional manual overrides.** If you already have a processed GeoJSON/GeoTIFF, you can attach it directly instead of providing an archive.
 3. Save the record. The frontend will automatically load entries from `/api/layers/` and expose download links for the uploaded assets alongside the interactive map.
 
 Layer metadata is readable without authentication, while create/update actions remain gated behind the admin to prevent unauthorized uploads.
