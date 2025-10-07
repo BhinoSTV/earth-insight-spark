@@ -1,8 +1,16 @@
 declare module "leaflet" {
-  import type { Feature, GeoJsonObject } from "geojson";
-
   export type LatLngExpression = [number, number];
   export type LatLngBoundsExpression = unknown;
+
+  export interface GeoJsonObject {
+    type: string;
+    bbox?: number[];
+  }
+
+  export interface Feature<P = Record<string, unknown>> extends GeoJsonObject {
+    id?: string | number;
+    properties: P | null;
+  }
 
   export interface Layer {
     addTo(map: Map): Layer;
@@ -18,13 +26,15 @@ declare module "leaflet" {
   export interface Map {
     setView(center: LatLngExpression, zoom: number): Map;
     remove(): void;
-    fitBounds(bounds: LatLngBoundsExpression): Map;
+    fitBounds(bounds: LatLngBoundsExpression, options?: Record<string, unknown>): Map;
+    invalidateSize(options?: Record<string, unknown>): Map;
+    removeLayer(layer: Layer): Map;
   }
 
   export type TileLayer = Layer;
 
   export interface GeoJSONOptions {
-    onEachFeature?: (feature: Feature, layer: PopupLayer) => void;
+    onEachFeature?: (feature: Feature | null, layer: PopupLayer) => void;
   }
 
   export type GeoJSONLayer = PopupLayer;

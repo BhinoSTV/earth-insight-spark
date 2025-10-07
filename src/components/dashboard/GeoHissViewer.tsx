@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { Feature, GeoJsonObject } from "geojson";
+import type { Feature, GeoJsonObject } from "@/types/geojson";
 import type { Chart as ChartJS, ChartConfiguration } from "chart.js";
 import type {
   ChartConstructor,
@@ -428,7 +428,7 @@ const GeoHissViewer = () => {
                     return;
                   }
 
-                  const chartConfig: ChartConfiguration<"bar"> = {
+                  const chartConfig: ChartConfiguration = {
                     type: "bar",
                     data: {
                       labels: MONTHS,
