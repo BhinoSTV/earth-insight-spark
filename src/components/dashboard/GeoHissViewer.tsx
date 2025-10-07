@@ -10,6 +10,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { Feature, GeoJsonObject } from "geojson";
+import type { Chart as ChartJS, ChartConfiguration } from "chart.js";
+import type {
+  ChartConstructor,
+  GeoRasterLayerConstructor,
+  GeoRasterLayerInstance,
+  LeafletModule,
+  ParseGeoraster,
+} from "@/types/geospatial";
+import type { Layer as LeafletLayer, Map as LeafletMap } from "leaflet";
 import { Loader2, Menu, X } from "lucide-react";
 
 const LAYER_CONFIG: Record<
@@ -56,10 +66,15 @@ type LayerRecord = {
 };
 
 type ExternalLibraries = {
-  L: any;
-  Chart: any;
-  parseGeoraster: any;
-  GeoRasterLayer: any;
+  L: LeafletModule;
+  Chart?: ChartConstructor;
+  parseGeoraster: ParseGeoraster;
+  GeoRasterLayer: GeoRasterLayerConstructor;
+};
+
+type PopupLayer = LeafletLayer & {
+  bindPopup: (content: string) => PopupLayer;
+  on: (type: string, handler: () => void) => PopupLayer;
 };
 
 const loadScript = (src: string) =>
@@ -106,8 +121,8 @@ const GeoHissViewer = () => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const currentLayerRef = useRef<any>(null);
+  const mapInstanceRef = useRef<LeafletMap | null>(null);
+  const currentLayerRef = useRef<LeafletLayer | GeoRasterLayerInstance | null>(null);
   const libsRef = useRef<ExternalLibraries | null>(null);
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -137,12 +152,16 @@ const GeoHissViewer = () => {
           return;
         }
 
-        const L = (window as any).L;
-        const Chart = (window as any).Chart;
-        const parseGeoraster = (window as any).parseGeoraster;
-        const GeoRasterLayer = (window as any).GeoRasterLayer;
+        const leafletWindow = window as Window & {
+          L?: LeafletModule;
+          Chart?: ChartConstructor;
+          parseGeoraster?: ParseGeoraster;
+          GeoRasterLayer?: GeoRasterLayerConstructor;
+        };
 
-        if (!L || !mapContainerRef.current) {
+        const { L, Chart, parseGeoraster, GeoRasterLayer } = leafletWindow;
+
+        if (!L || !parseGeoraster || !GeoRasterLayer || !mapContainerRef.current) {
           throw new Error("Leaflet failed to initialize. Please try again.");
         }
 
@@ -239,7 +258,15 @@ const GeoHissViewer = () => {
           return;
         }
 
-        setLayers(data as LayerRecord[]);
+        const normalizedLayers = data.filter(
+          (entry): entry is LayerRecord =>
+            typeof entry === "object" &&
+            entry !== null &&
+            "name" in entry &&
+            typeof (entry as { name?: unknown }).name === "string"
+        );
+
+        setLayers(normalizedLayers);
         setError(null);
       } catch (fetchError) {
         if (isCancelled) {
@@ -298,9 +325,8 @@ const GeoHissViewer = () => {
 
   const removeCurrentLayer = useCallback(() => {
     const map = mapInstanceRef.current;
-    const libs = libsRef.current;
 
-    if (!map || !libs) {
+    if (!map) {
       return;
     }
 
@@ -363,29 +389,43 @@ const GeoHissViewer = () => {
             throw new Error("Unable to load the selected vector layer.");
           }
 
-          const geojson = await response.json();
+          const geojson = (await response.json()) as GeoJsonObject;
 
           const vectorLayer = libs.L.geoJSON(geojson, {
-            onEachFeature(feature: any, featureLayer: any) {
-              const properties = feature?.properties ?? {};
-              const hasMonthlyValues = MONTHS.every((month) => properties[month] !== undefined);
+            onEachFeature(feature: Feature | null, featureLayer: LeafletLayer) {
+              const properties = (feature?.properties ?? {}) as Record<string, unknown>;
+              const hasMonthlyValues = MONTHS.every(
+                (month) => properties[month] !== undefined
+              );
 
               if (config.showMonthlyChart && hasMonthlyValues && libs.Chart) {
-                const values = MONTHS.map((month) => Number(properties[month]) || 0);
-                const chartId = `chart-${Math.random().toString(36).slice(2)}`;
-                let chartInstance: any = null;
+                const values = MONTHS.map((month) => {
+                  const rawValue = properties[month];
+                  if (typeof rawValue === "number") {
+                    return rawValue;
+                  }
+                  if (typeof rawValue === "string" && rawValue.trim().length > 0) {
+                    const parsed = Number(rawValue);
+                    return Number.isFinite(parsed) ? parsed : 0;
+                  }
+                  return 0;
+                });
 
-                featureLayer.bindPopup(
+                const chartId = `chart-${Math.random().toString(36).slice(2)}`;
+                let chartInstance: ChartJS | null = null;
+                const popupLayer = featureLayer as PopupLayer;
+
+                popupLayer.bindPopup(
                   `<div style="width:320px;height:260px;"><canvas id="${chartId}"></canvas></div>`
                 );
 
-                featureLayer.on("popupopen", () => {
+                popupLayer.on("popupopen", () => {
                   const canvas = document.getElementById(chartId) as HTMLCanvasElement | null;
-                  if (!canvas) {
+                  if (!canvas || !libs.Chart) {
                     return;
                   }
 
-                  chartInstance = new libs.Chart(canvas, {
+                  const chartConfig: ChartConfiguration<"bar"> = {
                     type: "bar",
                     data: {
                       labels: MONTHS,
@@ -406,33 +446,38 @@ const GeoHissViewer = () => {
                         legend: { display: true },
                         title: {
                           display: true,
-                          text: `${layerName} (${properties.Subbasin || properties.SUB || "Feature"})`,
+                          text: `${layerName} (${String(
+                            properties["Subbasin"] ?? properties["SUB"] ?? "Feature"
+                          )})`,
                         },
                       },
                       scales: {
                         y: { beginAtZero: true },
                       },
                     },
-                  });
+                  };
+
+                  chartInstance = new libs.Chart(canvas, chartConfig);
                 });
 
-                featureLayer.on("popupclose", () => {
-                  if (chartInstance?.destroy) {
-                    chartInstance.destroy();
-                  }
+                popupLayer.on("popupclose", () => {
+                  chartInstance?.destroy();
                   chartInstance = null;
                 });
               } else {
-                const rows = Object.keys(properties)
-                  .map((key) => {
-                    const value = properties[key];
-                    return `<tr><td style="font-weight:600;padding-right:8px;">${key}</td><td>${value}</td></tr>`;
+                const rows = Object.entries(properties)
+                  .map(([key, value]) => {
+                    const displayValue =
+                      value === null || value === undefined ? "" : String(value);
+                    return `<tr><td style="font-weight:600;padding-right:8px;">${key}</td><td>${displayValue}</td></tr>`;
                   })
                   .join("") ||
                   '<tr><td colspan="2" style="padding:4px 0;">No attributes available.</td></tr>';
 
-                featureLayer.bindPopup(
-                  `<div style="max-width:360px;max-height:260px;overflow:auto"><h4 style="font-weight:600;margin-bottom:8px;">${layerName}</h4><table style="width:100%;font-size:12px;">${rows}</table></div>`
+                (featureLayer as PopupLayer).bindPopup(
+                  `<div style="max-width:360px;max-height:260px;overflow:auto"><h4 style="font-weight:600;margin-bottom:8px;">${
+                    layerName
+                  }</h4><table style="width:100%;font-size:12px;">${rows}</table></div>`
                 );
               }
             },
@@ -442,7 +487,8 @@ const GeoHissViewer = () => {
           currentLayerRef.current = vectorLayer;
 
           try {
-            map.fitBounds(vectorLayer.getBounds(), { padding: [20, 20] });
+            const padding: [number, number] = [20, 20];
+            map.fitBounds(vectorLayer.getBounds(), { padding });
           } catch (boundsError) {
             console.warn("Unable to compute bounds for the selected layer.", boundsError);
           }
