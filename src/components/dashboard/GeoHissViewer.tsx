@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Feature, GeoJsonObject } from "../../types/geojson";
-import type { Chart as ChartJS, ChartConfiguration } from "chart.js";
 import type {
+  ChartConfiguration,
   ChartConstructor,
+  ChartInstance,
   GeoRasterLayerConstructor,
   GeoRasterLayerInstance,
   LeafletLayer,
@@ -412,7 +413,7 @@ const GeoHissViewer = () => {
                 });
 
                 const chartId = `chart-${Math.random().toString(36).slice(2)}`;
-                let chartInstance: ChartJS | null = null;
+                let chartInstance: ChartInstance | null = null;
                 const popupLayer = featureLayer as LeafletPopupLayer;
 
                 popupLayer.bindPopup(

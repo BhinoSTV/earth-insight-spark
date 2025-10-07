@@ -1,10 +1,30 @@
-import type { Chart, ChartConfiguration } from "chart.js";
 import type { Feature, GeoJsonObject } from "./geojson";
+
+export interface ChartDataset {
+  label?: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
+  borderWidth?: number;
+}
+
+export interface ChartConfiguration {
+  type: string;
+  data: {
+    labels: string[];
+    datasets: ChartDataset[];
+  };
+  options?: Record<string, unknown>;
+}
+
+export interface ChartInstance {
+  destroy(): void;
+}
 
 export type ChartConstructor = new (
   context: CanvasRenderingContext2D | HTMLCanvasElement,
   config: ChartConfiguration
-) => Chart;
+) => ChartInstance;
 
 export type LeafletLatLng = [number, number];
 
