@@ -77,6 +77,8 @@ type PopupLayer = LeafletLayer & {
   on: (type: string, handler: () => void) => PopupLayer;
 };
 
+const CLEAR_LAYER_VALUE = "__clear_layer__";
+
 const loadScript = (src: string) =>
   new Promise<void>((resolve, reject) => {
     const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
@@ -142,7 +144,7 @@ const GeoHissViewer = () => {
         await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
         await Promise.all([
           loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"),
-          loadScript("https://unpkg.com/georaster/dist/georaster.bundle.min.js"),
+          loadScript("https://unpkg.com/georaster/dist/georaster.browser.min.js"),
         ]);
         await loadScript(
           "https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"
@@ -351,13 +353,14 @@ const GeoHissViewer = () => {
 
   const changeLayer = useCallback(
     async (layerName: string) => {
-      setSelectedLayer(layerName);
-
-      if (!layerName) {
+      if (layerName === CLEAR_LAYER_VALUE || !layerName) {
+        setSelectedLayer("");
         removeCurrentLayer();
         setError(null);
         return;
       }
+
+      setSelectedLayer(layerName);
 
       const libs = libsRef.current;
       const map = mapInstanceRef.current;
@@ -570,7 +573,7 @@ const GeoHissViewer = () => {
             Active layer
           </Label>
           <Select
-            value={selectedLayer}
+            value={selectedLayer || undefined}
             onValueChange={(value) => {
               void changeLayer(value);
             }}
@@ -580,7 +583,9 @@ const GeoHissViewer = () => {
               <SelectValue placeholder="Select a layer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">None</SelectItem>
+              <SelectItem value={CLEAR_LAYER_VALUE} disabled={!selectedLayer}>
+                Clear selection
+              </SelectItem>
               {layers.map((layer) => (
                 <SelectItem key={layer.name} value={layer.name}>
                   {layer.name}
