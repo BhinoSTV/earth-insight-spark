@@ -26,9 +26,10 @@ const LAYER_CONFIG: Record<
     legend: string;
   }
 > = {
-  GW_Recharge: { showMonthlyChart: true, legend: "Groundwater Recharge (mm)" },
+  GW_Recharge: { showMonthlyChart: true, legend: "GW Recharge - m/s" },
+  River_Discharge: { showMonthlyChart: true, legend: "River Discharge - cu. m/s" },
   Subbasin: { showMonthlyChart: false, legend: "Subbasin" },
-  River: { showMonthlyChart: true, legend: "River Discharge (cu.m/s)" },
+  River: { showMonthlyChart: true, legend: "River Discharge - cu. m/s" },
 };
 
 const DEFAULT_LAYER_CFG = { showMonthlyChart: false, legend: "Attributes" };
@@ -362,16 +363,19 @@ const GeoHissViewer = () => {
                   }
 
                   const chartConfig: ChartConfiguration = {
-                    type: "bar",
+                    type: "line",
                     data: {
                       labels: MONTHS,
                       datasets: [
                         {
                           label: config.legend,
                           data: values,
-                          backgroundColor: "rgba(54, 162, 235, 0.6)",
                           borderColor: "rgba(54, 162, 235, 1)",
-                          borderWidth: 1,
+                          backgroundColor: "rgba(54, 162, 235, 0.15)",
+                          tension: 0.3,
+                          borderWidth: 2,
+                          pointRadius: 4,
+                          pointHoverRadius: 6,
                         },
                       ],
                     },
@@ -388,7 +392,13 @@ const GeoHissViewer = () => {
                         },
                       },
                       scales: {
-                        y: { beginAtZero: true },
+                        y: {
+                          beginAtZero: true,
+                          title: { display: true, text: config.legend },
+                        },
+                        x: {
+                          title: { display: true, text: "Month" },
+                        },
                       },
                     },
                   };
