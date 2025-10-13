@@ -10,19 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Chart, type ChartConfiguration } from "chart.js";
+import "chart.js/auto";
+import L, { type LatLngBoundsExpression, type Layer, type Map } from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type { Feature, GeoJsonObject } from "../../types/geojson";
-import type {
-  ChartConfiguration,
-  ChartConstructor,
-  ChartInstance,
-  GeoRasterLayerConstructor,
-  GeoRasterLayerInstance,
-  LeafletLayer,
-  LeafletMap,
-  LeafletModule,
-  LeafletPopupLayer,
-  ParseGeoraster,
-} from "@/types/geospatial";
+import parseGeoraster from "georaster";
+import GeoRasterLayer from "georaster-layer-for-leaflet";
 import { Loader2, Menu, X } from "lucide-react";
 
 const LAYER_CONFIG: Record<
@@ -68,121 +62,19 @@ type LayerRecord = {
   updated_at?: string;
 };
 
-type ExternalLibraries = {
-  L: LeafletModule;
-  Chart?: ChartConstructor;
-  parseGeoraster?: ParseGeoraster;
-  GeoRasterLayer?: GeoRasterLayerConstructor;
-};
-
 const CLEAR_LAYER_VALUE = "__clear_layer__";
-
-const loadScript = (src: string) =>
-  new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
-    if (existing) {
-      if (existing.dataset.loaded === "true") {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error(`Failed to load script: ${src}`)),
-        { once: true }
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.dataset.loaded = "false";
-    script.addEventListener("load", () => {
-      script.dataset.loaded = "true";
-      resolve();
-    });
-    script.addEventListener("error", () => reject(new Error(`Failed to load script: ${src}`)));
-    document.body.appendChild(script);
-  });
-
-const loadScriptWithFallbacks = async (sources: readonly string[]) => {
-  let lastError: Error | null = null;
-
-  for (const source of sources) {
-    try {
-      await loadScript(source);
-      return;
-    } catch (error) {
-      lastError =
-        error instanceof Error
-          ? error
-          : new Error(`Failed to load script: ${source}`);
-    }
-  }
-
-  if (lastError) {
-    throw lastError;
-  }
-};
-
-const loadStylesheet = (href: string) => {
-  if (document.querySelector(`link[href="${href}"]`)) {
-    return;
-  }
-
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = href;
-  document.head.appendChild(link);
-};
-
-const resolveGeoRasterSupport = (
-  leafletWindow: Window &
-    Partial<{
-      GeoRaster?: unknown;
-      georaster?: unknown;
-      parseGeoRaster?: unknown;
-    }>
-) => {
-  const parseCandidates: unknown[] = [
-    leafletWindow.parseGeoraster,
-    leafletWindow.parseGeoRaster,
-    (leafletWindow.georaster as { parseGeoraster?: unknown } | undefined)?.parseGeoraster,
-    (leafletWindow.georaster as { parse?: unknown } | undefined)?.parse,
-    (leafletWindow.georaster as { default?: unknown } | undefined)?.default,
-    (leafletWindow.GeoRaster as { parseGeoraster?: unknown } | undefined)?.parseGeoraster,
-    (leafletWindow.GeoRaster as { parse?: unknown } | undefined)?.parse,
-    (leafletWindow.GeoRaster as { default?: unknown } | undefined)?.default,
-  ];
-
-  const layerCandidates: unknown[] = [
-    leafletWindow.GeoRasterLayer,
-    (leafletWindow.georaster as { GeoRasterLayer?: unknown } | undefined)?.GeoRasterLayer,
-    (leafletWindow.georaster as { default?: { GeoRasterLayer?: unknown } } | undefined)?.default
-      ?.GeoRasterLayer,
-    (leafletWindow.GeoRaster as { GeoRasterLayer?: unknown } | undefined)?.GeoRasterLayer,
-    (leafletWindow.GeoRaster as { default?: { GeoRasterLayer?: unknown } } | undefined)?.default
-      ?.GeoRasterLayer,
-  ];
-
-  const parseGeoraster = parseCandidates.find((candidate) => typeof candidate === "function");
-  const GeoRasterLayer = layerCandidates.find((candidate) => typeof candidate === "function");
-
-  return {
-    parseGeoraster: parseGeoraster as ParseGeoraster | undefined,
-    GeoRasterLayer: GeoRasterLayer as GeoRasterLayerConstructor | undefined,
-  };
+type PopupLayer = Layer & {
+  bindPopup(content: string): PopupLayer;
+  on(event: string, handler: () => void): PopupLayer;
+  getBounds?(): LatLngBoundsExpression;
 };
 
 const GeoHissViewer = () => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
-  const mapInstanceRef = useRef<LeafletMap | null>(null);
-  const currentLayerRef = useRef<LeafletLayer | GeoRasterLayerInstance | null>(null);
-  const libsRef = useRef<ExternalLibraries | null>(null);
+  const mapInstanceRef = useRef<Map | null>(null);
+  const currentLayerRef = useRef<Layer | null>(null);
 
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -190,7 +82,6 @@ const GeoHissViewer = () => {
   const [selectedLayer, setSelectedLayer] = useState<string>("");
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rasterWarning, setRasterWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -198,82 +89,18 @@ const GeoHissViewer = () => {
     const initialize = async () => {
       try {
         setIsLoading(true);
-        loadStylesheet("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-        await loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-
-        if (isCancelled) {
-          return;
-        }
-
-        const leafletWindow = window as Window & {
-          L?: LeafletModule;
-          Chart?: ChartConstructor;
-          parseGeoraster?: ParseGeoraster;
-          GeoRasterLayer?: GeoRasterLayerConstructor;
-        };
-
-        const { L } = leafletWindow;
-
-        if (!L || !mapContainerRef.current) {
-          throw new Error("Leaflet failed to initialize. Please try again.");
+        if (!mapContainerRef.current) {
+          throw new Error("Leaflet map container is unavailable.");
         }
 
         const map = L.map(mapContainerRef.current).setView([18.2, 120.6], 10);
-        const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
-        });
-        baseLayer.addTo(map);
+        }).addTo(map);
 
-        const chartPromise = loadScript(
-          "https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"
-        )
-          .then(() => leafletWindow.Chart)
-          .catch(() => undefined);
-
-        let rasterError: Error | null = null;
-
-        try {
-          await loadScriptWithFallbacks([
-            "https://cdn.jsdelivr.net/npm/georaster@1.6.2/dist/browser/georaster.browser.min.js",
-            "https://cdn.jsdelivr.net/npm/georaster@1.6.2/dist/georaster.browser.min.js",
-            "https://unpkg.com/georaster@1.6.2/dist/browser/georaster.browser.min.js",
-            "https://unpkg.com/georaster@1.6.2/dist/georaster.browser.min.js",
-          ]);
-          await loadScriptWithFallbacks([
-            "https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet@1.7.0/dist/georaster-layer-for-leaflet.min.js",
-            "https://unpkg.com/georaster-layer-for-leaflet@1.7.0/dist/georaster-layer-for-leaflet.min.js",
-          ]);
-        } catch (rasterLoadError) {
-          rasterError =
-            rasterLoadError instanceof Error
-              ? rasterLoadError
-              : new Error("GeoRaster libraries failed to load.");
-        }
-
-        const resolvedRasterLibs = resolveGeoRasterSupport(leafletWindow);
-
-        const libs: ExternalLibraries = {
-          L,
-          Chart: await chartPromise,
-          parseGeoraster: resolvedRasterLibs.parseGeoraster,
-          GeoRasterLayer: resolvedRasterLibs.GeoRasterLayer,
-        };
-
-        if ((!libs.parseGeoraster || !libs.GeoRasterLayer) && rasterError === null) {
-          rasterError = new Error(
-            "GeoRaster libraries are unavailable. Raster datasets cannot be displayed."
-          );
-        }
-
-        libsRef.current = libs;
         mapInstanceRef.current = map;
         setMapReady(true);
         setError(null);
-        setRasterWarning(
-          rasterError
-            ? `${rasterError.message} Raster datasets will be unavailable until the viewer can load these libraries.`
-            : null
-        );
       } catch (loadError) {
         if (isCancelled) {
           return;
@@ -283,7 +110,6 @@ const GeoHissViewer = () => {
             ? loadError.message
             : "Unable to initialize the Geo-HISS viewer.";
         setError(message);
-        setRasterWarning(null);
       } finally {
         if (!isCancelled) {
           setIsLoading(false);
@@ -299,7 +125,6 @@ const GeoHissViewer = () => {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
-      libsRef.current = null;
       currentLayerRef.current = null;
     };
   }, []);
@@ -471,11 +296,10 @@ const GeoHissViewer = () => {
 
       setSelectedLayer(layerName);
 
-      const libs = libsRef.current;
       const map = mapInstanceRef.current;
       const layerDefinition = layers.find((item) => item.name === layerName);
 
-      if (!libs || !map || !layerDefinition) {
+      if (!map || !layerDefinition) {
         return;
       }
 
@@ -503,14 +327,14 @@ const GeoHissViewer = () => {
 
           const geojson = (await response.json()) as GeoJsonObject;
 
-          const vectorLayer = libs.L.geoJSON(geojson, {
-            onEachFeature(feature: Feature | null, featureLayer: LeafletLayer) {
+          const vectorLayer = L.geoJSON(geojson, {
+            onEachFeature(feature: Feature | null, featureLayer: Layer) {
               const properties = (feature?.properties ?? {}) as Record<string, unknown>;
               const hasMonthlyValues = MONTHS.every(
                 (month) => properties[month] !== undefined
               );
 
-              if (config.showMonthlyChart && hasMonthlyValues && libs.Chart) {
+              if (config.showMonthlyChart && hasMonthlyValues) {
                 const values = MONTHS.map((month) => {
                   const rawValue = properties[month];
                   if (typeof rawValue === "number") {
@@ -524,8 +348,8 @@ const GeoHissViewer = () => {
                 });
 
                 const chartId = `chart-${Math.random().toString(36).slice(2)}`;
-                let chartInstance: ChartInstance | null = null;
-                const popupLayer = featureLayer as LeafletPopupLayer;
+                let chartInstance: Chart | null = null;
+                const popupLayer = featureLayer as PopupLayer;
 
                 popupLayer.bindPopup(
                   `<div style="width:320px;height:260px;"><canvas id="${chartId}"></canvas></div>`
@@ -533,11 +357,11 @@ const GeoHissViewer = () => {
 
                 popupLayer.on("popupopen", () => {
                   const canvas = document.getElementById(chartId) as HTMLCanvasElement | null;
-                  if (!canvas || !libs.Chart) {
+                  if (!canvas) {
                     return;
                   }
 
-                  const chartConfig: ChartConfiguration = {
+                  const chartConfig: ChartConfiguration<"bar", number[], string> = {
                     type: "bar",
                     data: {
                       labels: MONTHS,
@@ -569,7 +393,7 @@ const GeoHissViewer = () => {
                     },
                   };
 
-                  chartInstance = new libs.Chart(canvas, chartConfig);
+                  chartInstance = new Chart(canvas, chartConfig);
                 });
 
                 popupLayer.on("popupclose", () => {
@@ -586,7 +410,8 @@ const GeoHissViewer = () => {
                   .join("") ||
                   '<tr><td colspan="2" style="padding:4px 0;">No attributes available.</td></tr>';
 
-                (featureLayer as LeafletPopupLayer).bindPopup(
+                const popupLayer = featureLayer as PopupLayer;
+                popupLayer.bindPopup(
                   `<div style="max-width:360px;max-height:260px;overflow:auto"><h4 style="font-weight:600;margin-bottom:8px;">${
                     layerName
                   }</h4><table style="width:100%;font-size:12px;">${rows}</table></div>`
@@ -605,12 +430,6 @@ const GeoHissViewer = () => {
             console.warn("Unable to compute bounds for the selected layer.", boundsError);
           }
         } else if (derivedType === "raster" && (layerDefinition.raster_file || layerDefinition.raster_url)) {
-          if (!libs.parseGeoraster || !libs.GeoRasterLayer) {
-            throw new Error(
-              "Raster layers cannot be displayed because the GeoRaster libraries are unavailable."
-            );
-          }
-
           const rasterUrl = layerDefinition.raster_file || layerDefinition.raster_url || "";
           const response = await fetch(rasterUrl);
           if (!response.ok) {
@@ -618,8 +437,8 @@ const GeoHissViewer = () => {
           }
 
           const arrayBuffer = await response.arrayBuffer();
-          const georaster = await libs.parseGeoraster(arrayBuffer);
-          const rasterLayer = new libs.GeoRasterLayer({ georaster });
+          const georaster = await parseGeoraster(arrayBuffer);
+          const rasterLayer = new GeoRasterLayer({ georaster });
           rasterLayer.addTo(map);
           currentLayerRef.current = rasterLayer;
 
@@ -668,13 +487,6 @@ const GeoHissViewer = () => {
         <Alert variant="destructive">
           <AlertTitle>Unable to load Geo-HISS data</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {rasterWarning ? (
-        <Alert className="border-amber-500 bg-amber-500/15 text-amber-900 dark:border-amber-400 dark:bg-amber-500/10 dark:text-amber-100">
-          <AlertTitle>Raster overlays unavailable</AlertTitle>
-          <AlertDescription>{rasterWarning}</AlertDescription>
         </Alert>
       ) : null}
 
