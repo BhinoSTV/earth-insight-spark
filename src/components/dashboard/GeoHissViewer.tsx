@@ -97,6 +97,7 @@ const loadScript = (src: string) =>
     const script = document.createElement("script");
     script.src = src;
     script.async = true;
+    script.crossOrigin = "anonymous";
     script.dataset.loaded = "false";
     script.addEventListener("load", () => {
       script.dataset.loaded = "true";
@@ -135,6 +136,44 @@ const loadStylesheet = (href: string) => {
   link.rel = "stylesheet";
   link.href = href;
   document.head.appendChild(link);
+};
+
+const resolveGeoRasterSupport = (
+  leafletWindow: Window &
+    Partial<{
+      GeoRaster?: unknown;
+      georaster?: unknown;
+      parseGeoRaster?: unknown;
+    }>
+) => {
+  const parseCandidates: unknown[] = [
+    leafletWindow.parseGeoraster,
+    leafletWindow.parseGeoRaster,
+    (leafletWindow.georaster as { parseGeoraster?: unknown } | undefined)?.parseGeoraster,
+    (leafletWindow.georaster as { parse?: unknown } | undefined)?.parse,
+    (leafletWindow.georaster as { default?: unknown } | undefined)?.default,
+    (leafletWindow.GeoRaster as { parseGeoraster?: unknown } | undefined)?.parseGeoraster,
+    (leafletWindow.GeoRaster as { parse?: unknown } | undefined)?.parse,
+    (leafletWindow.GeoRaster as { default?: unknown } | undefined)?.default,
+  ];
+
+  const layerCandidates: unknown[] = [
+    leafletWindow.GeoRasterLayer,
+    (leafletWindow.georaster as { GeoRasterLayer?: unknown } | undefined)?.GeoRasterLayer,
+    (leafletWindow.georaster as { default?: { GeoRasterLayer?: unknown } } | undefined)?.default
+      ?.GeoRasterLayer,
+    (leafletWindow.GeoRaster as { GeoRasterLayer?: unknown } | undefined)?.GeoRasterLayer,
+    (leafletWindow.GeoRaster as { default?: { GeoRasterLayer?: unknown } } | undefined)?.default
+      ?.GeoRasterLayer,
+  ];
+
+  const parseGeoraster = parseCandidates.find((candidate) => typeof candidate === "function");
+  const GeoRasterLayer = layerCandidates.find((candidate) => typeof candidate === "function");
+
+  return {
+    parseGeoraster: parseGeoraster as ParseGeoraster | undefined,
+    GeoRasterLayer: GeoRasterLayer as GeoRasterLayerConstructor | undefined,
+  };
 };
 
 const GeoHissViewer = () => {
@@ -211,11 +250,13 @@ const GeoHissViewer = () => {
               : new Error("GeoRaster libraries failed to load.");
         }
 
+        const resolvedRasterLibs = resolveGeoRasterSupport(leafletWindow);
+
         const libs: ExternalLibraries = {
           L,
           Chart: await chartPromise,
-          parseGeoraster: leafletWindow.parseGeoraster,
-          GeoRasterLayer: leafletWindow.GeoRasterLayer,
+          parseGeoraster: resolvedRasterLibs.parseGeoraster,
+          GeoRasterLayer: resolvedRasterLibs.GeoRasterLayer,
         };
 
         if ((!libs.parseGeoraster || !libs.GeoRasterLayer) && rasterError === null) {
