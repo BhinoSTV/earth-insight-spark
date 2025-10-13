@@ -361,7 +361,7 @@ const GeoHissViewer = () => {
                     return;
                   }
 
-                  const chartConfig: ChartConfiguration<"bar", number[], string> = {
+                  const chartConfig: ChartConfiguration = {
                     type: "bar",
                     data: {
                       labels: MONTHS,

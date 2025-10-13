@@ -66,7 +66,7 @@ declare module "georaster" {
 
 declare module "georaster-layer-for-leaflet" {
   import type { GeoRaster } from "georaster";
-  import type { GridLayerOptions, LatLngBoundsExpression, Layer } from "leaflet";
+  import type { GridLayerOptions, LatLngBoundsExpression, Layer, Map } from "leaflet";
 
   export interface GeoRasterLayerOptions extends GridLayerOptions {
     georaster: GeoRaster;
@@ -75,5 +75,6 @@ declare module "georaster-layer-for-leaflet" {
   export default class GeoRasterLayer extends Layer {
     constructor(options: GeoRasterLayerOptions);
     getBounds(): LatLngBoundsExpression;
+    addTo(map: Map): this;
   }
 }
