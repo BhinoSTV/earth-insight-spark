@@ -19,20 +19,40 @@ import parseGeoraster from "georaster";
 import GeoRasterLayer from "georaster-layer-for-leaflet";
 import { Loader2, Menu, X } from "lucide-react";
 
-const LAYER_CONFIG: Record<
-  string,
-  {
-    showMonthlyChart: boolean;
-    legend: string;
-  }
-> = {
+type LayerConfig = {
+  showMonthlyChart: boolean;
+  legend: string;
+};
+
+const RAW_LAYER_CONFIG: Record<string, LayerConfig> = {
   GW_Recharge: { showMonthlyChart: true, legend: "GW Recharge - m/s" },
   River_Discharge: { showMonthlyChart: true, legend: "River Discharge - cu. m/s" },
   Subbasin: { showMonthlyChart: false, legend: "Subbasin" },
   River: { showMonthlyChart: true, legend: "River Discharge - cu. m/s" },
 };
 
-const DEFAULT_LAYER_CFG = { showMonthlyChart: false, legend: "Attributes" };
+const normalizeLayerKey = (value: string) => value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+const LAYER_CONFIG_LOOKUP = Object.entries(RAW_LAYER_CONFIG).reduce(
+  (accumulator, [key, value]) => {
+    const normalizedKey = normalizeLayerKey(key);
+    accumulator.set(key, value);
+    accumulator.set(normalizedKey, value);
+    return accumulator;
+  },
+  new Map<string, LayerConfig>()
+);
+
+const getLayerConfig = (layerName: string): LayerConfig => {
+  const normalizedName = normalizeLayerKey(layerName);
+  return (
+    LAYER_CONFIG_LOOKUP.get(layerName) ??
+    LAYER_CONFIG_LOOKUP.get(normalizedName) ?? {
+      showMonthlyChart: false,
+      legend: "Attributes",
+    }
+  );
+};
 
 const MONTHS = [
   "January",
@@ -308,7 +328,7 @@ const GeoHissViewer = () => {
       setIsLoading(true);
       setError(null);
 
-      const config = LAYER_CONFIG[layerName] ?? DEFAULT_LAYER_CFG;
+      const config = getLayerConfig(layerName);
       const normalizedType = (layerDefinition.layer_type || "").toLowerCase();
       const derivedType = normalizedType
         ? normalizedType
