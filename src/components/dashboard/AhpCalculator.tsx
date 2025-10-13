@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/providers/auth";
 import {
   Table,
   TableBody,
@@ -57,6 +58,8 @@ const formatNumber = (value: number) =>
   Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "-";
 
 const AhpCalculator = () => {
+  const { tokens } = useAuth();
+
   const [step, setStep] = useState<Step>("criteria");
   const [criteriaInput, setCriteriaInput] = useState("");
   const [criteria, setCriteria] = useState<string[]>([]);
@@ -131,22 +134,41 @@ const AhpCalculator = () => {
       setStep("processing");
 
       try {
+        if (!tokens?.access) {
+          throw new Error("Your session has expired. Please sign in again.");
+        }
+
         const response = await fetch(DEFAULT_COMPUTE_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${tokens.access}`,
           },
           body: JSON.stringify(payload),
           credentials: "include",
         });
 
-        const data = (await response.json()) as AHPComputationResponse;
+        let data: AHPComputationResponse | { detail?: string; error?: string } | null = null;
 
-        if (!response.ok || data?.error) {
-          throw new Error(data?.error || "Unable to compute AHP matrices.");
+        try {
+          data = (await response.json()) as
+            | AHPComputationResponse
+            | { detail?: string; error?: string };
+        } catch (parseError) {
+          // If the backend sends back HTML (e.g. 502), surface a friendlier message.
+          data = null;
         }
 
-        setResults(data);
+        if (!response.ok || (data && "error" in data && data.error)) {
+          const apiError =
+            (data && "error" in data && data.error) ||
+            (data && "detail" in data && data.detail) ||
+            null;
+
+          throw new Error(apiError || "Unable to compute AHP matrices.");
+        }
+
+        setResults(data as AHPComputationResponse);
         setStep("results");
       } catch (requestError) {
         const message =
@@ -159,7 +181,7 @@ const AhpCalculator = () => {
         setIsSubmitting(false);
       }
     },
-    []
+    [tokens?.access]
   );
 
   const handlePairsSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
