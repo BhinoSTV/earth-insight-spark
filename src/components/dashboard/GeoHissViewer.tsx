@@ -69,6 +69,59 @@ const MONTHS = [
   "December",
 ];
 
+const normalizePropertyKey = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+
+const deriveMonthlySeries = (properties: Record<string, unknown>): number[] | null => {
+  const remainingEntries = Object.entries(properties).map(([key, value]) => ({
+    key,
+    normalized: normalizePropertyKey(key),
+    value,
+  }));
+
+  const consumedIndexes = new Set<number>();
+  let matchedCount = 0;
+  const values = MONTHS.map((month) => {
+    const normalizedMonth = normalizePropertyKey(month);
+    const normalizedAbbreviation = normalizePropertyKey(month.slice(0, 3));
+
+    const matchIndex = remainingEntries.findIndex(({ normalized }, index) => {
+      if (consumedIndexes.has(index)) {
+        return false;
+      }
+
+      return (
+        normalized === normalizedMonth ||
+        normalized === normalizedAbbreviation ||
+        normalized.endsWith(normalizedMonth) ||
+        normalized.endsWith(normalizedAbbreviation) ||
+        normalized.includes(normalizedMonth) ||
+        normalized.includes(normalizedAbbreviation)
+      );
+    });
+
+    if (matchIndex === -1) {
+      return 0;
+    }
+
+    consumedIndexes.add(matchIndex);
+    matchedCount += 1;
+    const rawValue = remainingEntries[matchIndex]?.value;
+
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      return rawValue;
+    }
+
+    if (typeof rawValue === "string" && rawValue.trim().length > 0) {
+      const parsed = Number(rawValue);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+  });
+
+  return matchedCount >= 3 ? values : null;
+};
+
 type LayerRecord = {
   id?: number;
   name: string;
@@ -351,23 +404,11 @@ const GeoHissViewer = () => {
           const vectorLayer = L.geoJSON(geojson, {
             onEachFeature(feature: Feature | null, featureLayer: Layer) {
               const properties = (feature?.properties ?? {}) as Record<string, unknown>;
-              const hasMonthlyValues = MONTHS.every(
-                (month) => properties[month] !== undefined
-              );
+              const monthlySeries = config.showMonthlyChart
+                ? deriveMonthlySeries(properties)
+                : null;
 
-              if (config.showMonthlyChart && hasMonthlyValues) {
-                const values = MONTHS.map((month) => {
-                  const rawValue = properties[month];
-                  if (typeof rawValue === "number") {
-                    return rawValue;
-                  }
-                  if (typeof rawValue === "string" && rawValue.trim().length > 0) {
-                    const parsed = Number(rawValue);
-                    return Number.isFinite(parsed) ? parsed : 0;
-                  }
-                  return 0;
-                });
-
+              if (monthlySeries) {
                 const chartId = `chart-${Math.random().toString(36).slice(2)}`;
                 let chartInstance: Chart | null = null;
                 const popupLayer = featureLayer as PopupLayer;
@@ -389,7 +430,7 @@ const GeoHissViewer = () => {
                       datasets: [
                         {
                           label: config.legend,
-                          data: values,
+                          data: monthlySeries,
                           borderColor: "rgba(54, 162, 235, 1)",
                           backgroundColor: "rgba(54, 162, 235, 0.15)",
                           tension: 0.3,
