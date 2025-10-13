@@ -1,6 +1,13 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import LayerUploadViewSet, NewsItemViewSet, ServiceViewSet, TeamMemberViewSet
+from .views import (
+    AHPComputeView,
+    LayerUploadViewSet,
+    NewsItemViewSet,
+    ServiceViewSet,
+    TeamMemberViewSet,
+)
 
 app_name = "content"
 
@@ -10,4 +17,8 @@ router.register(r"services", ServiceViewSet, basename="service")
 router.register(r"team", TeamMemberViewSet, basename="team")
 router.register(r"layers", LayerUploadViewSet, basename="layer")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("ahp/compute/", AHPComputeView.as_view(), name="ahp-compute"),
+]
+
+urlpatterns += router.urls

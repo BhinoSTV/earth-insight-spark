@@ -8,11 +8,16 @@ import zipfile
 from pathlib import Path
 
 import shapefile
+from unittest import mock
+
+import numpy as np
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from .ahp import AHPResult
 from .models import LayerType, LayerUpload
 
 
@@ -135,3 +140,55 @@ class LayerUploadAPITests(TestCase):
         self.assertTrue(upload.raster_file.name.endswith(".tif"))
         with upload.raster_file.open("rb") as fh:
             self.assertEqual(fh.read(), b"dummy raster data")
+
+
+class AHPComputeAPITests(TestCase):
+    def setUp(self) -> None:
+        self.client = APIClient()
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="tester",
+            email="tester@example.com",
+            password="password123",
+        )
+
+    def _build_payload(self) -> dict:
+        return {
+            "criteria_names": ["Cost", "Quality", "Speed"],
+            "bounds": [
+                {"left_index": 0, "right_index": 1, "min": 1, "max": 3},
+                {"left_index": 0, "right_index": 2, "min": 2, "max": 4},
+                {"left_index": 1, "right_index": 2, "min": 1, "max": 5},
+            ],
+        }
+
+    def test_requires_authentication(self) -> None:
+        response = self.client.post(reverse("content:ahp-compute"), self._build_payload(), format="json")
+        self.assertEqual(response.status_code, 401)
+
+    def test_rejects_incomplete_bounds(self) -> None:
+        self.client.force_authenticate(self.user)
+        payload = self._build_payload()
+        payload["bounds"] = payload["bounds"][:-1]
+
+        response = self.client.post(reverse("content:ahp-compute"), payload, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("pairwise", str(response.data["non_field_errors"]).lower())
+
+    def test_returns_computed_results(self) -> None:
+        self.client.force_authenticate(self.user)
+
+        matrix = np.array([[1.0, 2.0, 4.0], [0.5, 1.0, 3.0], [0.25, 1 / 3, 1.0]])
+        result = AHPResult(matrix=matrix, consistency_ratio=0.05, weights=np.array([0.6, 0.3, 0.1]))
+
+        with mock.patch("content.views.run_adaptive_ahp", return_value=([result], [result], 0.256)):
+            response = self.client.post(reverse("content:ahp-compute"), self._build_payload(), format="json")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["criteria_names"], ["Cost", "Quality", "Speed"])
+        self.assertEqual(body["valid_samples"], 1)
+        self.assertEqual(body["total_samples"], 1)
+        self.assertAlmostEqual(body["average_cr"], 0.05, places=4)
+        self.assertEqual(len(body["average_weights"]), 3)
+        self.assertEqual(len(body["valid_results"]), 1)
