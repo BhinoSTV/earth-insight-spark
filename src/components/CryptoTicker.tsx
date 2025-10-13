@@ -39,13 +39,14 @@ const CryptoTicker = () => {
     }
     
     const data = (await response.json()) as Partial<CryptoResponse>;
+    type CryptoEntry = [SupportedToken, CryptoResponse[SupportedToken] | undefined];
+    const entries = Object.entries(data) as CryptoEntry[];
 
-    return Object.entries(data).flatMap(([id, info]) => {
+    return entries.flatMap(([token, info]) => {
       if (!info) {
         return [];
       }
 
-      const token = id as SupportedToken;
       const metadata = cryptoMap[token];
 
       if (!metadata || typeof info.usd !== "number") {
