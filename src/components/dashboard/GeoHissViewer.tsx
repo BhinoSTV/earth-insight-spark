@@ -20,8 +20,8 @@ import GeoRasterLayer from "georaster-layer-for-leaflet";
 import { Loader2, Menu, X } from "lucide-react";
 
 type LayerConfig = {
-  showMonthlyChart: boolean;
-  legend: string;
+  showMonthlyChart?: boolean;
+  legend?: string;
 };
 
 const RAW_LAYER_CONFIG: Record<string, LayerConfig> = {
@@ -47,10 +47,7 @@ const getLayerConfig = (layerName: string): LayerConfig => {
   const normalizedName = normalizeLayerKey(layerName);
   return (
     LAYER_CONFIG_LOOKUP.get(layerName) ??
-    LAYER_CONFIG_LOOKUP.get(normalizedName) ?? {
-      showMonthlyChart: false,
-      legend: "Attributes",
-    }
+    LAYER_CONFIG_LOOKUP.get(normalizedName) ?? {}
   );
 };
 
@@ -120,6 +117,49 @@ const deriveMonthlySeries = (properties: Record<string, unknown>): number[] | nu
   });
 
   return matchedCount >= 3 ? values : null;
+};
+
+const METRIC_KEY_MATCHERS = [
+  "metric",
+  "metrics",
+  "unit",
+  "units",
+  "measurement",
+  "measure",
+  "valueunit",
+  "unitofmeasure",
+  "unitmeasure",
+];
+
+const deriveLegendLabel = (
+  layerName: string,
+  properties: Record<string, unknown>,
+  config: LayerConfig
+) => {
+  const configuredLegend = config.legend?.trim();
+  if (configuredLegend) {
+    return configuredLegend;
+  }
+
+  for (const [key, rawValue] of Object.entries(properties)) {
+    const normalizedKey = normalizePropertyKey(key);
+    const matchesMetricKey =
+      METRIC_KEY_MATCHERS.includes(normalizedKey) ||
+      normalizedKey.endsWith("metric") ||
+      normalizedKey.endsWith("metrics") ||
+      normalizedKey.endsWith("unit") ||
+      normalizedKey.endsWith("units");
+
+    if (!matchesMetricKey) {
+      continue;
+    }
+
+    if (typeof rawValue === "string" && rawValue.trim()) {
+      return `${layerName} - ${rawValue.trim()}`;
+    }
+  }
+
+  return `${layerName} (Monthly values)`;
 };
 
 type LayerRecord = {
@@ -404,11 +444,12 @@ const GeoHissViewer = () => {
           const vectorLayer = L.geoJSON(geojson, {
             onEachFeature(feature: Feature | null, featureLayer: Layer) {
               const properties = (feature?.properties ?? {}) as Record<string, unknown>;
-              const monthlySeries = config.showMonthlyChart
-                ? deriveMonthlySeries(properties)
-                : null;
+              const monthlySeries = deriveMonthlySeries(properties);
+              const shouldRenderMonthlyChart =
+                monthlySeries !== null && config.showMonthlyChart !== false;
 
-              if (monthlySeries) {
+              if (shouldRenderMonthlyChart && monthlySeries) {
+                const legendLabel = deriveLegendLabel(layerName, properties, config);
                 const chartId = `chart-${Math.random().toString(36).slice(2)}`;
                 let chartInstance: Chart | null = null;
                 const popupLayer = featureLayer as PopupLayer;
@@ -429,7 +470,7 @@ const GeoHissViewer = () => {
                       labels: MONTHS,
                       datasets: [
                         {
-                          label: config.legend,
+                          label: legendLabel,
                           data: monthlySeries,
                           borderColor: "rgba(54, 162, 235, 1)",
                           backgroundColor: "rgba(54, 162, 235, 0.15)",
@@ -455,7 +496,7 @@ const GeoHissViewer = () => {
                       scales: {
                         y: {
                           beginAtZero: true,
-                          title: { display: true, text: config.legend },
+                          title: { display: true, text: legendLabel },
                         },
                         x: {
                           title: { display: true, text: "Month" },
