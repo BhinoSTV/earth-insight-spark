@@ -54,10 +54,16 @@ declare module "georaster" {
     height?: number;
     width?: number;
     noDataValue?: number | null;
+    nodataValue?: number | null;
+    nodata_value?: number | null;
+    NODATA_value?: number | null;
     pixelHeight?: number;
     pixelWidth?: number;
     projection?: string;
     rasters?: number[][];
+    mins?: number[];
+    maxs?: number[];
+    metadata?: Record<string, unknown>;
     [key: string]: unknown;
   };
 
@@ -70,6 +76,9 @@ declare module "georaster-layer-for-leaflet" {
 
   export interface GeoRasterLayerOptions extends GridLayerOptions {
     georaster: GeoRaster;
+    opacity?: number;
+    resolution?: number;
+    pixelValuesToColorFn?: (values: number[]) => string | null;
   }
 
   export default class GeoRasterLayer extends Layer {

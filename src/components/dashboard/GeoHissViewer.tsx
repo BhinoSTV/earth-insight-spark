@@ -31,6 +31,140 @@ const RAW_LAYER_CONFIG: Record<string, LayerConfig> = {
   River: { showMonthlyChart: true, legend: "River Discharge - cu. m/s" },
 };
 
+const COLOR_STOPS: Array<{ stop: number; color: [number, number, number] }> = [
+  { stop: 0, color: [37, 99, 235] },
+  { stop: 0.5, color: [34, 197, 94] },
+  { stop: 1, color: [220, 38, 38] },
+];
+
+const clamp = (value: number, minimum: number, maximum: number) =>
+  Math.min(Math.max(value, minimum), maximum);
+
+const interpolateColor = (
+  start: [number, number, number],
+  end: [number, number, number],
+  ratio: number
+) =>
+  start.map((component, index) =>
+    Math.round(component + (end[index] - component) * ratio)
+  ) as [number, number, number];
+
+const createColorInterpolator = (minimum: number, maximum: number) => {
+  const safeMin = Number.isFinite(minimum) ? minimum : 0;
+  const safeMax = Number.isFinite(maximum) && maximum !== minimum ? maximum : safeMin + 1;
+
+  return (value: number) => {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+
+    const ratio = clamp((value - safeMin) / (safeMax - safeMin), 0, 1);
+
+    for (let index = 0; index < COLOR_STOPS.length - 1; index += 1) {
+      const current = COLOR_STOPS[index];
+      const next = COLOR_STOPS[index + 1];
+
+      if (ratio >= current.stop && ratio <= next.stop) {
+        const rangeRatio =
+          (ratio - current.stop) / (next.stop - current.stop || 1);
+        const [red, green, blue] = interpolateColor(
+          current.color,
+          next.color,
+          rangeRatio
+        );
+        return `rgba(${red}, ${green}, ${blue}, 0.82)`;
+      }
+    }
+
+    const [red, green, blue] = COLOR_STOPS[COLOR_STOPS.length - 1].color;
+    return `rgba(${red}, ${green}, ${blue}, 0.82)`;
+  };
+};
+
+const extractNoDataValues = (georaster: Awaited<ReturnType<typeof parseGeoraster>>) => {
+  const candidates = new Set<number>();
+
+  const potentialKeys: Array<keyof typeof georaster> = [
+    "noDataValue",
+    "nodataValue",
+    "nodata_value",
+    "NODATA_value",
+  ];
+
+  for (const key of potentialKeys) {
+    const rawValue = georaster[key];
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      candidates.add(rawValue);
+    }
+  }
+
+  const metadata = georaster.metadata as Record<string, unknown> | undefined;
+  if (metadata) {
+    const metaNoData =
+      (metadata["NODATA_value"] ?? metadata["nodata"] ?? metadata["NODATA"]) as
+        | number
+        | null
+        | undefined;
+    if (typeof metaNoData === "number" && Number.isFinite(metaNoData)) {
+      candidates.add(metaNoData);
+    }
+  }
+
+  return candidates;
+};
+
+const extractValueRange = (georaster: Awaited<ReturnType<typeof parseGeoraster>>) => {
+  let minimum = Number.POSITIVE_INFINITY;
+  let maximum = Number.NEGATIVE_INFINITY;
+
+  const pushCandidate = (value: number) => {
+    if (Number.isFinite(value)) {
+      minimum = Math.min(minimum, value);
+      maximum = Math.max(maximum, value);
+    }
+  };
+
+  const mins = Array.isArray(georaster.mins) ? georaster.mins : [];
+  const maxs = Array.isArray(georaster.maxs) ? georaster.maxs : [];
+
+  mins.forEach((candidate) => {
+    if (typeof candidate === "number") {
+      pushCandidate(candidate);
+    }
+  });
+
+  maxs.forEach((candidate) => {
+    if (typeof candidate === "number") {
+      pushCandidate(candidate);
+    }
+  });
+
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) {
+    const rasters = Array.isArray(georaster.rasters) ? georaster.rasters : [];
+    for (const band of rasters) {
+      if (!Array.isArray(band)) {
+        continue;
+      }
+
+      for (const value of band) {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          pushCandidate(value);
+        }
+      }
+    }
+  }
+
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) {
+    return { minimum: 0, maximum: 1 };
+  }
+
+  if (minimum === maximum) {
+    return { minimum, maximum: minimum + 1 };
+  }
+
+  return { minimum, maximum };
+};
+
 const normalizeLayerKey = (value: string) => value.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
 const LAYER_CONFIG_LOOKUP = Object.entries(RAW_LAYER_CONFIG).reduce(
@@ -160,6 +294,32 @@ const deriveLegendLabel = (
   }
 
   return `${layerName} (Monthly values)`;
+};
+
+const buildRasterLayer = (
+  georaster: Awaited<ReturnType<typeof parseGeoraster>>
+) => {
+  const noDataValues = extractNoDataValues(georaster);
+  const { minimum, maximum } = extractValueRange(georaster);
+  const colorInterpolator = createColorInterpolator(minimum, maximum);
+
+  return new GeoRasterLayer({
+    georaster,
+    opacity: 0.78,
+    resolution: 256,
+    pixelValuesToColorFn: (values) => {
+      const value = Array.isArray(values) ? values[0] : undefined;
+      if (typeof value !== "number" || Number.isNaN(value)) {
+        return null;
+      }
+
+      if (noDataValues.has(value)) {
+        return null;
+      }
+
+      return colorInterpolator(value) ?? null;
+    },
+  });
 };
 
 type LayerRecord = {
@@ -550,7 +710,7 @@ const GeoHissViewer = () => {
 
           const arrayBuffer = await response.arrayBuffer();
           const georaster = await parseGeoraster(arrayBuffer);
-          const rasterLayer = new GeoRasterLayer({ georaster });
+          const rasterLayer = buildRasterLayer(georaster);
           rasterLayer.addTo(map);
           currentLayerRef.current = rasterLayer;
 
@@ -564,6 +724,8 @@ const GeoHissViewer = () => {
         } else {
           throw new Error("The selected layer does not have an associated data source.");
         }
+
+        setError(null);
 
         if (window.innerWidth < 768) {
           setIsPanelOpen(false);
