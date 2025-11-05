@@ -303,9 +303,8 @@ const buildRasterLayer = (
   const { minimum, maximum } = extractValueRange(georaster);
   const colorInterpolator = createColorInterpolator(minimum, maximum);
 
-  return new GeoRasterLayer({
+  const rasterLayer = new GeoRasterLayer({
     georaster,
-    opacity: 0.78,
     resolution: 256,
     pixelValuesToColorFn: (values) => {
       const value = Array.isArray(values) ? values[0] : undefined;
@@ -320,6 +319,12 @@ const buildRasterLayer = (
       return colorInterpolator(value) ?? null;
     },
   });
+
+  if (typeof rasterLayer.setOpacity === "function") {
+    rasterLayer.setOpacity(0.78);
+  }
+
+  return rasterLayer;
 };
 
 type LayerRecord = {
@@ -641,7 +646,7 @@ const GeoHissViewer = () => {
                     return;
                   }
 
-                  const chartConfig: ChartConfiguration = {
+                  const chartConfig: ChartConfiguration<"line", number[], string> = {
                     type: "line",
                     data: {
                       labels: MONTHS,

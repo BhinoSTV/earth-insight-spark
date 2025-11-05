@@ -85,5 +85,6 @@ declare module "georaster-layer-for-leaflet" {
     constructor(options: GeoRasterLayerOptions);
     getBounds(): LatLngBoundsExpression;
     addTo(map: Map): this;
+    setOpacity(opacity: number): this;
   }
 }
