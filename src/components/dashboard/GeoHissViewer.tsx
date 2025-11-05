@@ -359,18 +359,31 @@ const GeoHissViewer = () => {
 
   useEffect(() => {
     let isCancelled = false;
+    let frameHandle: number | null = null;
 
     const initialize = async () => {
       try {
         setIsLoading(true);
-        if (!mapContainerRef.current) {
-          throw new Error("Leaflet map container is unavailable.");
+
+        if (mapInstanceRef.current || isCancelled) {
+          return;
         }
 
-        const map = L.map(mapContainerRef.current).setView([18.2, 120.6], 10);
+        const container = mapContainerRef.current;
+        if (!container) {
+          frameHandle = window.requestAnimationFrame(initialize);
+          return;
+        }
+
+        const map = L.map(container).setView([18.2, 120.6], 10);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
+
+        if (isCancelled) {
+          map.remove();
+          return;
+        }
 
         mapInstanceRef.current = map;
         setMapReady(true);
@@ -391,15 +404,19 @@ const GeoHissViewer = () => {
       }
     };
 
-    void initialize();
+    frameHandle = window.requestAnimationFrame(initialize);
 
     return () => {
       isCancelled = true;
+      if (frameHandle !== null) {
+        window.cancelAnimationFrame(frameHandle);
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
       currentLayerRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
