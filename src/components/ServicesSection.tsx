@@ -1,9 +1,24 @@
 import { Calculator, Globe2, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import useAuthModalLauncher from "@/hooks/useAuthModalLauncher";
+import { useState, type MouseEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ServicesSection = () => {
   const [hoveredService, setHoveredService] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const { isAuthenticated, launch } = useAuthModalLauncher();
+
+  const handleEngagement = (event: MouseEvent<HTMLElement>) => {
+    if (!isAuthenticated) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    launch({
+      onAuthenticated: () => navigate("/dashboard"),
+    });
+  };
 
   const services = [
     {
@@ -30,7 +45,10 @@ const ServicesSection = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-muted/30">
+    <section
+      id="services"
+      className="py-16 md:py-24 bg-gradient-to-b from-background to-muted/30"
+    >
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-12 md:mb-16 animate-fade-in">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-foreground">
@@ -43,12 +61,13 @@ const ServicesSection = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {services.map((service, index) => (
-            <div 
+            <div
               key={service.title}
               className="group relative p-6 md:p-8 rounded-2xl bg-gradient-card backdrop-blur-sm border border-border/50 hover:shadow-elegant transition-all duration-500 animate-scale-in cursor-pointer"
               style={{ animationDelay: `${index * 0.2}s` }}
               onMouseEnter={() => setHoveredService(index)}
               onMouseLeave={() => setHoveredService(null)}
+              onClick={handleEngagement}
             >
               <div className="absolute inset-0 bg-gradient-primary opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity duration-500" />
               
@@ -81,9 +100,13 @@ const ServicesSection = () => {
                   ))}
                 </div>
                 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full group-hover:border-primary group-hover:text-primary group-hover:bg-primary/5 transition-all duration-300"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleEngagement(event);
+                  }}
                 >
                   Learn More
                 </Button>
