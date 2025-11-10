@@ -12,7 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Chart, type ChartConfiguration } from "chart.js";
 import "chart.js/auto";
-import L, { type LatLngBoundsExpression, type Layer, type Map } from "leaflet";
+import * as Leaflet from "leaflet";
+import type { LatLngBoundsExpression, Layer, Map } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Feature, GeoJsonObject } from "../../types/geojson";
 import parseGeoraster from "georaster";
@@ -380,8 +381,8 @@ const GeoHissViewer = () => {
           return;
         }
 
-        const map = L.map(container).setView([18.2, 120.6], 10);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        const map = Leaflet.map(container).setView([18.2, 120.6], 10);
+        Leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
         }).addTo(map);
 
@@ -623,7 +624,7 @@ const GeoHissViewer = () => {
 
           const geojson = (await response.json()) as GeoJsonObject;
 
-          const vectorLayer = L.geoJSON(geojson, {
+          const vectorLayer = Leaflet.geoJSON(geojson, {
             onEachFeature(feature: Feature | null, featureLayer: Layer) {
               const properties = (feature?.properties ?? {}) as Record<string, unknown>;
               const monthlySeries = deriveMonthlySeries(properties);
