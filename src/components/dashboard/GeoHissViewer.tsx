@@ -10,8 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Chart, type ChartConfiguration } from "chart.js";
-import "chart.js/auto";
+import Chart from "chart.js/auto";
+import type { ChartConfiguration } from "chart.js";
 import * as Leaflet from "leaflet";
 import type { LatLngBoundsExpression, Layer, Map } from "leaflet";
 import "leaflet/dist/leaflet.css";
