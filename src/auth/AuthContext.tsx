@@ -43,6 +43,7 @@ type AuthContextValue = {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
+  refreshAccessToken: () => Promise<string | null>;
 };
 
 const STORAGE_KEY = "earth-insight-session";
@@ -320,6 +321,39 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     persistSession(null, null);
   }, [persistSession, tokens]);
 
+  const refreshAccessToken = useCallback(async () => {
+    if (!tokens?.refresh) {
+      return null;
+    }
+
+    try {
+      const response = await fetch("/api/auth/token/refresh/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh: tokens.refresh }),
+      });
+
+      const data = (await safeJson(response)) as Record<string, unknown> | null;
+
+      if (!response.ok || !data || typeof data.access !== "string") {
+        persistSession(null, null);
+        return null;
+      }
+
+      const nextTokens: AuthTokens = {
+        access: data.access,
+        refresh: tokens.refresh,
+      };
+
+      persistSession(nextTokens, user ?? null);
+      return data.access;
+    } catch (error) {
+      return null;
+    }
+  }, [persistSession, tokens?.refresh, user]);
+
   const value = useMemo(
     () => ({
       tokens,
@@ -329,8 +363,9 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       login,
       register,
       logout,
+      refreshAccessToken,
     }),
-    [isLoading, login, logout, register, tokens, user]
+    [isLoading, login, logout, refreshAccessToken, register, tokens, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

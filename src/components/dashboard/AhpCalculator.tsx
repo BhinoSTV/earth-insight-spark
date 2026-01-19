@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/auth";
+import useAuthModalLauncher from "@/hooks/useAuthModalLauncher";
 import {
   Table,
   TableBody,
@@ -58,7 +59,8 @@ const formatNumber = (value: number) =>
   Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "-";
 
 const AhpCalculator = () => {
-  const { tokens } = useAuth();
+  const { tokens, refreshAccessToken } = useAuth();
+  const { launch } = useAuthModalLauncher();
 
   const [step, setStep] = useState<Step>("criteria");
   const [criteriaInput, setCriteriaInput] = useState("");
@@ -135,18 +137,29 @@ const AhpCalculator = () => {
 
       try {
         if (!tokens?.access) {
-          throw new Error("Your session has expired. Please sign in again.");
+          launch({ mode: "login" });
+          throw new Error("Please sign in to generate matrices.");
         }
 
-        const response = await fetch(DEFAULT_COMPUTE_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${tokens.access}`,
-          },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        });
+        const performRequest = (accessToken: string) =>
+          fetch(DEFAULT_COMPUTE_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify(payload),
+            credentials: "include",
+          });
+
+        let response = await performRequest(tokens.access);
+
+        if (response.status === 401) {
+          const refreshed = await refreshAccessToken();
+          if (refreshed) {
+            response = await performRequest(refreshed);
+          }
+        }
 
         let data: AHPComputationResponse | { detail?: string; error?: string } | null = null;
 
@@ -165,6 +178,10 @@ const AhpCalculator = () => {
             (data && "detail" in data && data.detail) ||
             null;
 
+          if (response.status === 401) {
+            launch({ mode: "login" });
+          }
+
           throw new Error(apiError || "Unable to compute AHP matrices.");
         }
 
@@ -181,7 +198,7 @@ const AhpCalculator = () => {
         setIsSubmitting(false);
       }
     },
-    [tokens?.access]
+    [launch, refreshAccessToken, tokens?.access]
   );
 
   const handlePairsSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
