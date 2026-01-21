@@ -106,6 +106,31 @@ class AHPComputeView(APIView):
             average_cr = 0.0
             average_weights: list[float] = []
 
+        analysis = None
+        if criteria_names and average_weights:
+            ranked = sorted(
+                zip(criteria_names, average_weights, strict=False),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+            top_count = min(3, len(ranked))
+            top_criteria = [
+                {"name": name, "weight": weight} for name, weight in ranked[:top_count]
+            ]
+            bottom_criteria = [
+                {"name": name, "weight": weight} for name, weight in ranked[-top_count:]
+            ]
+            consistency_label = (
+                "consistent"
+                if average_cr <= DEFAULT_CR_THRESHOLD
+                else "inconsistent"
+            )
+            analysis = {
+                "consistency_label": consistency_label,
+                "top_criteria": top_criteria,
+                "bottom_criteria": bottom_criteria,
+            }
+
         response_data = {
             "criteria_names": criteria_names,
             "duration": round(duration, 3),
@@ -115,6 +140,7 @@ class AHPComputeView(APIView):
             "total_samples": len(all_results),
             "valid_samples": len(valid_results),
             "cr_threshold": DEFAULT_CR_THRESHOLD,
+            "analysis": analysis,
         }
 
         return Response(response_data, status=status.HTTP_200_OK)

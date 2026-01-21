@@ -42,6 +42,11 @@ type AHPComputationResponse = {
   average_cr: number;
   average_weights: number[];
   valid_results: AHPMatrixResult[];
+  analysis?: {
+    consistency_label: "consistent" | "inconsistent";
+    top_criteria: Array<{ name: string; weight: number }>;
+    bottom_criteria: Array<{ name: string; weight: number }>;
+  } | null;
   error?: string;
 };
 
@@ -430,16 +435,51 @@ const AhpCalculator = () => {
               </p>
             </div>
 
-        <div className="space-y-8">
-          {renderResultsTable("Matrices with CR = 0", zeroCR)}
-          {renderResultsTable("Matrices with 0 < CR ≤ 0.1", lowCR)}
-          {renderResultsTable("Matrices with CR > 0.1", highCR)}
-          {!zeroCR.length && !lowCR.length && !highCR.length ? (
-            <p className="text-center text-sm text-muted-foreground">
-              The computation completed without returning any valid matrices.
-            </p>
-          ) : null}
-        </div>
+            {results.analysis ? (
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold">Criteria Analysis</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Overall consistency: {results.analysis.consistency_label}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-semibold">Top weighted criteria</h4>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {results.analysis.top_criteria.map((item) => (
+                        <li key={`top-${item.name}`}>
+                          {item.name}: {formatNumber(item.weight)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold">Lowest weighted criteria</h4>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {results.analysis.bottom_criteria.map((item) => (
+                        <li key={`bottom-${item.name}`}>
+                          {item.name}: {formatNumber(item.weight)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-8">
+              {renderResultsTable("Matrices with CR = 0", zeroCR)}
+              {renderResultsTable("Matrices with 0 < CR ≤ 0.1", lowCR)}
+              {renderResultsTable("Matrices with CR > 0.1", highCR)}
+              {!zeroCR.length && !lowCR.length && !highCR.length ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  The computation completed without returning any valid matrices.
+                </p>
+              ) : null}
+            </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Button onClick={handleRegenerate} disabled={isSubmitting}>
