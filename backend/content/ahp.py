@@ -89,6 +89,9 @@ def generate_random_matrix(min_values: Sequence[Sequence[float]], max_values: Se
     return matrix
 
 
+DEFAULT_CR_THRESHOLD = 0.1
+
+
 def adaptive_ahp_computation(
     min_values: Sequence[Sequence[float]],
     max_values: Sequence[Sequence[float]],
@@ -96,6 +99,7 @@ def adaptive_ahp_computation(
     target_valid: int = 100,
     max_samples: int = 3000,
     batch_size: int = 100,
+    max_cr: float = DEFAULT_CR_THRESHOLD,
 ) -> tuple[list[AHPResult], list[AHPResult]]:
     """Sample random matrices until the target number of valid ones is found."""
 
@@ -109,7 +113,7 @@ def adaptive_ahp_computation(
             cr, weights = calculate_consistency_ratio(matrix)
             result = AHPResult(matrix=matrix, consistency_ratio=cr, weights=weights)
             all_results.append(result)
-            if cr <= 0.1:
+            if cr <= max_cr:
                 valid_results.append(result)
         samples_done += batch_size
 
@@ -140,6 +144,7 @@ def run_adaptive_ahp(
     target_valid: int = 100,
     max_samples: int = 3000,
     batch_size: int = 100,
+    max_cr: float = DEFAULT_CR_THRESHOLD,
 ) -> tuple[list[AHPResult], list[AHPResult], float]:
     """Execute the adaptive sampling routine and return timing information."""
 
@@ -164,6 +169,7 @@ def run_adaptive_ahp(
         target_valid=target_valid,
         max_samples=max_samples,
         batch_size=batch_size,
+        max_cr=max_cr,
     )
     duration = time.perf_counter() - start
     return valid_results, all_results, duration

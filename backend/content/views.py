@@ -4,7 +4,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .ahp import run_adaptive_ahp
+from .ahp import DEFAULT_CR_THRESHOLD, run_adaptive_ahp
 
 from .models import LayerUpload, NewsItem, Service, TeamMember
 from .serializers import (
@@ -114,6 +114,7 @@ class AHPComputeView(APIView):
             "valid_results": formatted_results,
             "total_samples": len(all_results),
             "valid_samples": len(valid_results),
+            "cr_threshold": DEFAULT_CR_THRESHOLD,
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
