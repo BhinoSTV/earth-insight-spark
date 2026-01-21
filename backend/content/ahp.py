@@ -116,6 +116,23 @@ def adaptive_ahp_computation(
     return valid_results, all_results
 
 
+def tune_sampling_plan(
+    criteria_count: int,
+    target_valid: int,
+    max_samples: int,
+    batch_size: int,
+) -> tuple[int, int, int]:
+    """Adjust sampling parameters for larger criteria sets."""
+
+    if criteria_count <= 4:
+        return target_valid, max_samples, batch_size
+
+    scale = 1 + (criteria_count - 4) * 0.6
+    tuned_max_samples = int(max_samples * scale)
+    tuned_batch_size = int(min(500, max(batch_size, 100 + (criteria_count - 4) * 25)))
+    return target_valid, tuned_max_samples, tuned_batch_size
+
+
 def run_adaptive_ahp(
     bounds: Iterable[AHPBounds],
     criteria_count: int,
@@ -132,6 +149,13 @@ def run_adaptive_ahp(
     for bound in bounds:
         min_matrix[bound.left_index][bound.right_index] = bound.min_value
         max_matrix[bound.left_index][bound.right_index] = bound.max_value
+
+    target_valid, max_samples, batch_size = tune_sampling_plan(
+        criteria_count,
+        target_valid,
+        max_samples,
+        batch_size,
+    )
 
     start = time.perf_counter()
     valid_results, all_results = adaptive_ahp_computation(

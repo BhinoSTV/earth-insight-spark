@@ -59,9 +59,26 @@ class AHPComputeView(APIView):
         )
 
         results_to_display = valid_results
-        if not results_to_display and all_results:
-            best_result = min(all_results, key=lambda result: result.consistency_ratio)
-            results_to_display = [best_result]
+        if all_results:
+            desired_count = min(
+                MAX_RESPONSE_RESULTS,
+                max(len(valid_results), min(25, len(all_results))),
+            )
+
+            if len(results_to_display) < desired_count:
+                sorted_results = sorted(all_results, key=lambda result: result.consistency_ratio)
+                combined_results = valid_results + sorted_results
+                seen: set[bytes] = set()
+                results_to_display = []
+
+                for result in combined_results:
+                    signature = result.matrix.tobytes()
+                    if signature in seen:
+                        continue
+                    seen.add(signature)
+                    results_to_display.append(result)
+                    if len(results_to_display) >= desired_count:
+                        break
 
         results_to_display = results_to_display[:MAX_RESPONSE_RESULTS]
 
