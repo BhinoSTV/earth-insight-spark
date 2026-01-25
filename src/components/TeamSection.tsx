@@ -1,8 +1,10 @@
 import { Mail, Linkedin, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import useAuthModalLauncher from "@/hooks/useAuthModalLauncher";
 import teamJulius from "@/assets/team-julius.jpg";
 import teamJimmy from "@/assets/team-jimmy.jpg";
 import teamJudith from "@/assets/team-judith.jpg";
+import type { MouseEvent } from "react";
 
 const TeamSection = () => {
   const teamMembers = [
@@ -41,8 +43,32 @@ const TeamSection = () => {
     }
   ];
 
+  const { isAuthenticated, launch } = useAuthModalLauncher();
+
+  const handleSocialClick = (url: string) => (event: MouseEvent<HTMLButtonElement>) => {
+    if (!isAuthenticated) {
+      event.preventDefault();
+      launch();
+      return;
+    }
+
+    if (!url || url === "#") {
+      return;
+    }
+
+    if (url.startsWith("mailto:")) {
+      window.location.href = url;
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10">
+    <section
+      id="team"
+      className="py-16 md:py-24 bg-gradient-to-b from-background to-secondary/10"
+    >
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-12 md:mb-16 animate-fade-in">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 text-foreground">
@@ -85,13 +111,28 @@ const TeamSection = () => {
                 </p>
                 
                 <div className="flex gap-2 md:gap-3">
-                  <Button variant="ghost" size="icon" className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300"
+                    onClick={handleSocialClick(`mailto:${member.social.email}`)}
+                  >
                     <Mail className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300"
+                    onClick={handleSocialClick(member.social.linkedin)}
+                  >
                     <Linkedin className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hover:text-primary-glow hover:bg-primary/10 transition-all duration-300"
+                    onClick={handleSocialClick(member.social.github)}
+                  >
                     <Github className="w-4 h-4" />
                   </Button>
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
@@ -16,8 +16,18 @@ const CryptoTicker = () => {
   const cryptoMap = {
     bitcoin: { name: "Bitcoin", symbol: "BTC" },
     ethereum: { name: "Ethereum", symbol: "ETH" },
-    solana: { name: "Solana", symbol: "SOL" }
-  };
+    solana: { name: "Solana", symbol: "SOL" },
+  } as const;
+
+  type SupportedToken = keyof typeof cryptoMap;
+
+  type CryptoResponse = Record<
+    SupportedToken,
+    {
+      usd: number;
+      usd_24h_change?: number | null;
+    }
+  >;
 
   const fetchCryptoData = async (): Promise<CryptoData[]> => {
     const response = await fetch(
@@ -28,15 +38,36 @@ const CryptoTicker = () => {
       throw new Error("Failed to fetch crypto data");
     }
     
-    const data = await response.json();
-    
-    return Object.entries(data).map(([id, info]: [string, any]) => ({
-      id,
-      name: cryptoMap[id as keyof typeof cryptoMap].name,
-      symbol: cryptoMap[id as keyof typeof cryptoMap].symbol,
-      current_price: info.usd,
-      price_change_percentage_24h: info.usd_24h_change || 0,
-    }));
+    const data = (await response.json()) as Partial<CryptoResponse>;
+    type CryptoEntry = [SupportedToken, CryptoResponse[SupportedToken] | undefined];
+    const entries = Object.entries(data) as CryptoEntry[];
+
+    return entries.flatMap(([token, info]) => {
+      if (!info) {
+        return [];
+      }
+
+      const metadata = cryptoMap[token];
+
+      if (!metadata || typeof info.usd !== "number") {
+        return [];
+      }
+
+      const change =
+        typeof info.usd_24h_change === "number" && Number.isFinite(info.usd_24h_change)
+          ? info.usd_24h_change
+          : 0;
+
+      return [
+        {
+          id: token,
+          name: metadata.name,
+          symbol: metadata.symbol,
+          current_price: info.usd,
+          price_change_percentage_24h: change,
+        },
+      ];
+    });
   };
 
   const { data: cryptoData, isLoading, error } = useQuery({

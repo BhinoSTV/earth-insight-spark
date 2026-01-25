@@ -1,10 +1,28 @@
 import { Button } from "@/components/ui/button";
+import useAuthModalLauncher from "@/hooks/useAuthModalLauncher";
 import { Satellite, Globe, MapPin, Zap, Layers } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [scrollY, setScrollY] = useState(0);
+  const navigate = useNavigate();
+  const { intercept } = useAuthModalLauncher();
+
+  const handleGetStarted = intercept<HTMLButtonElement>({
+    mode: "register",
+    onAuthenticated: () => navigate("/dashboard"),
+  });
+
+  const handleLearnMore = intercept<HTMLButtonElement>({
+    onAuthenticated: () => {
+      const target = document.getElementById("services");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+  });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -95,18 +113,20 @@ const HeroSection = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4">
-            <Button 
-              variant="hero" 
-              size="lg" 
+            <Button
+              variant="hero"
+              size="lg"
               className="animate-scale-in w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-3 md:py-4"
+              onClick={handleGetStarted}
             >
               Get Started
             </Button>
-            <Button 
-              variant="glow" 
-              size="lg" 
-              className="animate-scale-in w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-3 md:py-4" 
+            <Button
+              variant="glow"
+              size="lg"
+              className="animate-scale-in w-full sm:w-auto text-base md:text-lg px-6 md:px-8 py-3 md:py-4"
               style={{ animationDelay: '0.2s' }}
+              onClick={handleLearnMore}
             >
               Learn More
             </Button>
