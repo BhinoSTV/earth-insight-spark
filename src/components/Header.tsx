@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Satellite, Menu, X } from "lucide-react";
+import { Satellite, Menu, X, Map } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,6 +36,12 @@ const Header = () => {
           
           {/* Desktop Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            <Link to="/gis">
+              <Button variant="ghost" className="hover:text-primary-glow hover:bg-primary/10 gap-2">
+                <Map className="w-4 h-4" />
+                Launch GIS
+              </Button>
+            </Link>
             <Button variant="ghost" className="hover:text-primary-glow hover:bg-primary/10">
               Login
             </Button>
@@ -67,6 +74,12 @@ const Header = () => {
               <a href="#team" className="text-muted-foreground hover:text-primary-glow transition-colors py-2" onClick={() => setIsMenuOpen(false)}>
                 Team
               </a>
+              <Link to="/gis" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="ghost" className="justify-start w-full gap-2">
+                  <Map className="w-4 h-4" />
+                  Launch GIS
+                </Button>
+              </Link>
               <div className="flex flex-col gap-3 pt-4 border-t border-border/30">
                 <Button variant="ghost" className="justify-start">
                   Login
